@@ -21,7 +21,7 @@ is currently included within the repository.
 - You should know the `absolute path of the directory containing Python modules`. **From that path, the Python interpreter should be able to successfully import every module within the Python project.** This depends from project to project. For example:
     - If you have cloned the [NetworkX](https://github.com/networkx/networkx.git) repository to `/tmp/networkx`, that directory should be `/tmp/networkx`.
     - If you have cloned the [typing_extensions](https://github.com/python/typing_extensions) repository to `/tmp/typing_extensions`, that directory should be `/tmp/typing_extensions/`
-- Your Python project under analysis should either **have no dependencies**or **have all dependencies explicitly listed in a `requirements.txt` file under the `absolute path of the directory containing Python modules`**.
+- Your Python project under analysis should either **have no dependencies** or **have all dependencies explicitly listed in a `requirements.txt` file under the `absolute path of the directory containing Python modules`**.
 
 ## Instructions
 
