@@ -18,6 +18,8 @@ def parse(
 ) -> RawResultDict:
     raw_result_defaultdict: RawResultDefaultdict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
 
+    logging.info('Files in HiTyper output directory path: %s', os.listdir(hityper_output_directory_path))
+
     for module_name, module_level_query_dict in query_dict.items():
         # python_file_path: 'hityper/module_search_path/src/meerkat/configurations/infrastructure/rest/health/registry.py'
         python_file_path: str = python_file_path_from_module_search_path_and_module_name(
@@ -64,6 +66,8 @@ def parse(
                             for parameter_name_or_return in function_level_query_dict:
                                 if parameter_name_or_return in parameter_name_or_return_to_type_annotation_string_list_dict:
                                     raw_result_defaultdict[module_name][class_name_or_global][function_name][parameter_name_or_return] = parameter_name_or_return_to_type_annotation_string_list_dict[parameter_name_or_return]
+        else:
+            logging.error('Cannot find expected output file %s for module %s', output_json_file_path, module_name) 
 
     return raw_result_dict_from_query_dict_and_raw_result_defaultdict(query_dict, raw_result_defaultdict)
 
@@ -76,7 +80,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-q', '--query-dict', type=str, required=True, help='Query dict, e.g. {"src.meerkat.configurations.infrastructure.rest.health.registry": {"HealthService": {"boot": ["container"]}}, "src.meerkat.data_providers.database.mongo.transformers": {"PostDocumentTransformer": {"transform_to_domain_object": ["return"]}}, "src.meerkat.domain.post.value_objects.id": {"Id": {"__init__": ["value"]}}, "src.meerkat.entrypoints.rest.post.registry": {"PostService": {"boot": ["container"]}}}')
     parser.add_argument('-m', '--module-search-path', type=str, required=True, help='Module search path, e.g. hityper/module_search_path')
-    parser.add_argument('-o', '--hityper-output-directory', type=str, required=True, help='HiTyper output directory, e.g. hityper/hityper_output_directory')
+    parser.add_argument('-d', '--hityper-output-directory', type=str, required=True, help='HiTyper output directory, e.g. hityper/hityper_output_directory')
+    parser.add_argument('-o', '--output-file', type=str, required=True, help='Output JSON file')
     args = parser.parse_args()
 
     query_dict = json.loads(
@@ -85,4 +90,5 @@ if __name__ == '__main__':
 
     result_dict = parse(query_dict, args.module_search_path, args.hityper_output_directory)
 
-    json.dump(result_dict, sys.stdout)
+    with open(args.output_file, 'w') as fp:
+        json.dump(result_dict, fp, indent=4)

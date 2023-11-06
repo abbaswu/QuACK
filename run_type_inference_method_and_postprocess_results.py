@@ -61,7 +61,7 @@ def run_type_inference_method_and_postprocess_results(
                 module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
                 module_name_to_import_from_tuple_set_dict
             ),
-            # 'attribute_based_type_inference': lambda module_name, type_annotation_string: parse(type_annotation_string)
+            'quack': lambda module_name, type_annotation_string: parse(type_annotation_string)
         }
 
         return result_dict_from_raw_result_dict(

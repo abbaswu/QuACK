@@ -25,23 +25,23 @@ RUN conda create --name pyre -y python=3.10 \
 RUN conda create --name pytype -y python=3.10 \
     && conda run --name pytype pip install pytype
 
-COPY HiTyper /root/HiTyper
+COPY hityper /root/hityper
 RUN conda create --name hityper -y python=3.9 \
-    && conda run --name hityper pip install --verbose /root/HiTyper \
+    && conda run --name hityper pip install --verbose /root/hityper \
     && conda run --name hityper pip install --verbose torch --index-url https://download.pytorch.org/whl/cpu
 
-COPY Stray /root/Stray
+COPY stray /root/stray
 RUN conda create --name stray -y python=3.9 \
-    && conda run --name stray pip install --verbose -r /root/Stray/requirements.txt \
-    && cp -a /root/Stray/data/pyi/numpy/. $CONDA_ROOT/envs/stray/lib/python3.9/site-packages/numpy \
-    && cp -a /root/Stray/data/pyi/matplotlib-stubs/. $CONDA_ROOT/envs/stray/lib/python3.9/site-packages/matplotlib-stubs
+    && conda run --name stray pip install --verbose -r /root/stray/requirements.txt \
+    && cp -a /root/stray/data/pyi/numpy/. $CONDA_ROOT/envs/stray/lib/python3.9/site-packages/numpy \
+    && cp -a /root/stray/data/pyi/matplotlib-stubs/. $CONDA_ROOT/envs/stray/lib/python3.9/site-packages/matplotlib-stubs
 
 RUN conda create --name mypy -y python=3.10 \
     && conda run --name mypy pip install --verbose mypy
 
-COPY attribute_based_type_inference /root/attribute_based_type_inference/
-RUN conda create --name attribute_based_type_inference -y python=3.10 \
-    && conda run --name attribute_based_type_inference pip install --verbose Levenshtein disjoint_set frozendict more_itertools networkx numba numpy ordered_set pqdict prettyprinter pudb scipy typeshed_client
+COPY quack /root/quack/
+RUN conda create --name quack -y python=3.10 \
+    && conda run --name quack pip install --verbose networkx numpy ordered_set pudb scipy typeshed_client
 
 # Install packages required in entrypoint and data processing scripts
 RUN conda run --name base pip install lark ordered_set pudb pandas

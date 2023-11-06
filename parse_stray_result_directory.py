@@ -219,7 +219,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-q', '--query-dict', type=str, required=True, help='Query dict, e.g. {"src.meerkat.configurations.infrastructure.rest.health.registry": {"HealthService": {"boot": ["container"]}}, "src.meerkat.data_providers.database.mongo.transformers": {"PostDocumentTransformer": {"transform_to_domain_object": ["return"]}}, "src.meerkat.domain.post.value_objects.id": {"Id": {"__init__": ["value"]}}, "src.meerkat.entrypoints.rest.post.registry": {"PostService": {"boot": ["container"]}}}')
     parser.add_argument('-s', '--absolute-module-search-path', type=str, required=True, help='Absolute module search path, e.g. /tmp/module_search_path')
-    parser.add_argument('-r', '--stray-result-directory', type=str, required=True, help='Stray result directory, e.g. Stray/result')
+    parser.add_argument('-r', '--stray-result-directory', type=str, required=True, help='Stray result directory, e.g. stray/result')
+    parser.add_argument('-o', '--output-file', type=str, required=True, help='Output JSON file')
+
     args = parser.parse_args()
 
     query_dict = json.loads(
@@ -228,4 +230,5 @@ if __name__ == '__main__':
 
     result_dict = parse(query_dict, args.absolute_module_search_path, args.stray_result_directory)
 
-    json.dump(result_dict, sys.stdout)
+    with open(args.output_file, 'w') as fp:
+        json.dump(result_dict, fp, indent=4)

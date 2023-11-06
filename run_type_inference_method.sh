@@ -2,7 +2,7 @@
 
 # Constants
 
-STRAY_ROOT='/root/Stray'
+STRAY_ROOT='/root/stray'
 
 # Functions
 
@@ -126,12 +126,12 @@ case "$method" in
     #     # Import-based analysis, MUST use pytype's virtual environment that has all the requirements installed
     #     conda run --no-capture-output --name pytype python3 "$(pwd)/parse_pytype_result_directory.py" --query-dict "$query_dict" --module-search-path "$module_search_path" --pytype-pyi-directory "$pytype_pyi_directory" > "$output_file_path"
     #     ;;
-    # attribute_based_type_inference)
-    #     output_file="$module_search_path/output_file.json"
+    quack)
+        output_file="$module_search_path/output_file.json"
         
-    #     conda run --no-capture-output --name attribute_based_type_inference pip install -r "${module_search_path}/requirements.txt" 1>&2
-    #     PYTHONPATH="$module_search_path" conda run --no-capture-output --name attribute_based_type_inference python3 "$(pwd)/attribute_based_type_inference/main.py" --query-dict "$query_dict" --module-search-path "$module_search_path" --output-file "$output_file_path"
-    #     ;;
+        conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        PYTHONPATH="$module_search_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --module-search-path "$module_search_path" --output-file "$output_file_path"
+        ;;
     stray)
         conda run --no-capture-output --name stray pip install -r "${module_search_path}/requirements.txt" 1>&2
         
@@ -150,13 +150,15 @@ case "$method" in
             file_name="$(basename "$python_file_path")"
             file_name_without_extension="${file_name%.py}"
 
+            echo conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
             conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
+            echo conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
             conda run --no-capture-output --name stray python3 -m predict "$directory_name" predict "$file_name_without_extension" 1>&2
         done
 
         cd "$current_working_directory"
 
-        python3 "$(pwd)/parse_stray_result_directory.py" --stray-result-directory "$STRAY_ROOT/result" --query-dict "$query_dict" --absolute-module-search-path "$absolute_module_search_path"
+        python3 "$(pwd)/parse_stray_result_directory.py" --stray-result-directory "$STRAY_ROOT/result" --query-dict "$query_dict" --absolute-module-search-path "$absolute_module_search_path" --output-file "$output_file_path"
         ;;
     hityper)
         conda run --no-capture-output --name hityper pip install -r "${module_search_path}/requirements.txt" 1>&2
@@ -166,10 +168,11 @@ case "$method" in
 
         python3 "$(pwd)/print_python_file_paths.py" -q "$query_dict" -s "$module_search_path" | while read python_file_path
         do
+            echo conda run --no-capture-output --name hityper hityper infer -p "$module_search_path" -s "$python_file_path" -d "$hityper_output_directory" -t 1>&2
             conda run --no-capture-output --name hityper hityper infer -p "$module_search_path" -s "$python_file_path" -d "$hityper_output_directory" -t 1>&2
         done
 
-        python3 "$(pwd)/parse_hityper_output_directory.py" --hityper-output-directory "$hityper_output_directory" --query-dict "$query_dict" --module-search-path "$module_search_path" > "$output_file_path"
+        python3 "$(pwd)/parse_hityper_output_directory.py" --hityper-output-directory "$hityper_output_directory" --query-dict "$query_dict" --module-search-path "$module_search_path" --output-file "$output_file_path"
         ;;
     *)
         # error
