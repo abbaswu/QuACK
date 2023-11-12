@@ -161,6 +161,13 @@ def print_related_nodes(
                            indent_level + 1, exclude)
 
 
+def contains_return_statement(function_node: typing.Union[ast.FunctionDef, ast.AsyncFunctionDef]) -> bool:
+    return any(
+        isinstance(node, ast.Return)
+        for node in ast.walk(function_node)
+    )
+
+
 def main():
     # Set up logging
     # https://stackoverflow.com/questions/10973362/python-logging-function-name-file-name-line-number-using-a-single-file
@@ -373,8 +380,13 @@ def main():
 
                     parameter_names_to_parameter_nodes: dict[str, _ast.AST] = {}
 
-                    # Do not infer return value types for __init__ and __new__ of classes.
-                    if not (class_name != 'global' and function_name in ('__init__', '__new__')):
+                    # Only infer return value types for functions that are:
+                    # Not __init__ and __new__ of classes, and,
+                    # Contain return statements.
+                    if (
+                            not (class_name != 'global' and function_name in ('__init__', '__new__'))
+                        and contains_return_statement(function_node)
+                    ):
                         parameter_names_to_parameter_nodes['return'] = symbolic_return_value
 
                     # Do not infer parameter types for self and cls in methods of classes.

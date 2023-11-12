@@ -45,7 +45,7 @@ if __name__ == '__main__':
     )
 
     # Run type inference method and postprocess results
-    result_dict: ResultDict = run_type_inference_method_and_postprocess_results(
+    result_dict, time_output = run_type_inference_method_and_postprocess_results(
         method,
         query_dict,
         module_search_path,
@@ -76,7 +76,13 @@ if __name__ == '__main__':
         os.path.join(module_search_path, 'result_dict.json'),
         'w'
     ) as fp:
-        json.dump(raw_result_dict_from_result_dict(result_dict), fp)
+        json.dump(raw_result_dict_from_result_dict(result_dict), fp, indent=4)
+    
+    with open(
+        os.path.join(module_search_path, 'time_output.json'),
+        'w'
+    ) as fp:
+        json.dump(time_output, fp, indent=4)
     
     mypy_output_dataframe_before_type_weaving.to_csv(os.path.join(module_search_path, 'mypy_output_dataframe_before_type_weaving.csv'))
     

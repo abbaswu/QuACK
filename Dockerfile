@@ -45,6 +45,9 @@ RUN conda create --name quack -y python=3.10 \
 # Install packages required in entrypoint and data processing scripts
 RUN conda run --name base pip install lark ordered_set pudb pandas
 
+# Install /usr/bin/time
+RUN  apt-get update && apt-get install -y time && apt-get clean
+
 # Copy entrypoint and data processing scripts
 COPY quack /root/quack/
 COPY static_import_analysis /root/static_import_analysis/

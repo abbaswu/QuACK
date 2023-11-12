@@ -701,11 +701,6 @@ async def collect_and_resolve_typing_constraints(
                 node.right
             })
 
-        # ast.BoolOp(op, values)
-        if isinstance(node, ast.BoolOp):
-            values: set[_ast.AST] = {node, *node.values}
-            await set_equivalent(values)
-
         # ast.Compare(left, ops, comparators)
         if isinstance(node, ast.Compare):
             operands = [node.left] + node.comparators

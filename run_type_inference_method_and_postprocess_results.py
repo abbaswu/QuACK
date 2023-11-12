@@ -19,11 +19,16 @@ def run_type_inference_method_and_postprocess_results(
     module_prefix: str,
     module_name_to_class_name_to_method_name_to_parameter_name_list_dict: dict[str, dict[str, dict[str, list[str]]]],
     module_name_to_import_from_tuple_set_dict: dict[str, set[tuple[str, str, str]]]
-) -> ResultDict:
+):
     # Create a temporary file
     with tempfile.TemporaryDirectory() as temporary_directory_name:
-        temporary_file_name = next(tempfile._get_candidate_names())
-        temporary_file_path = os.path.join(temporary_directory_name, temporary_file_name)
+        it = tempfile._get_candidate_names()
+
+        output_temporary_file_name = next(it)
+        output_temporary_file_path = os.path.join(temporary_directory_name, output_temporary_file_name)
+
+        time_temporary_file_name = next(it)
+        time_temporary_file_path = os.path.join(temporary_directory_name, time_temporary_file_name)
         
         result = subprocess.run(
             [
@@ -36,9 +41,11 @@ def run_type_inference_method_and_postprocess_results(
                 '-s',
                 module_search_path,
                 '-o',
-                temporary_file_path,
+                output_temporary_file_path,
                 '-p',
-                module_prefix
+                module_prefix,
+                '-t',
+                time_temporary_file_path
             ]
         )
 
@@ -48,7 +55,7 @@ def run_type_inference_method_and_postprocess_results(
 
         # Load the JSON
         # May raise an exception
-        with open(temporary_file_path, 'r') as fp:
+        with open(output_temporary_file_path, 'r') as fp:
             raw_result_dict: RawResultDict = json.load(fp)
 
         # Parse raw result dict
@@ -67,8 +74,10 @@ def run_type_inference_method_and_postprocess_results(
             'quack': lambda module_name, type_annotation_string: parse(type_annotation_string)
         }
 
+        with open(time_temporary_file_path, 'r') as fp:
+            time_output = json.load(fp)
+
         return result_dict_from_raw_result_dict(
             raw_result_dict,
             method_to_type_annotation_parser_dict[method]
-        )
-
+        ), time_output

@@ -3,10 +3,6 @@
 set -e
 set -o pipefail
 
-# Constants
-
-STRAY_ROOT='/root/stray'
-
 # Functions
 
 verify_query_dict () {
@@ -49,7 +45,10 @@ output_file_path=
 # Module prefix, pass with option `-p`
 module_prefix=
 
-while getopts ':m:q:s:o:p:' name
+# Time output file path, pass with option `-t`
+time_output_file_path=
+
+while getopts ':m:q:s:o:p:t:' name
 do
     case $name in
         m)
@@ -68,6 +67,9 @@ do
         p)
             module_prefix="$OPTARG"
             ;;
+        t)
+            time_output_file_path="$OPTARG"
+            ;;
         :)
             echo "Option -$OPTARG requires an argument"
             ;;
@@ -79,9 +81,9 @@ done
 
 # Sanity check
 
-if [ -z "$method" ] || [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ] || [ -z "$module_prefix" ]
+if [ -z "$method" ] || [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ] || [ -z "$module_prefix" ] || [ -z "$time_output_file_path" ]
 then
-    echo "Usage: $0 -m <method> -q <query_dict> -s <module_search_path> -o <output_file_path> -p <module_prefix>" >&2
+    echo "Usage: $0 -m <method> -q <query_dict> -s <module_search_path> -o <output_file_path> -p <module_prefix> -t <time_output_file_path>" >&2
     exit 1
 fi
 
@@ -142,55 +144,21 @@ case "$method" in
             conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
 
-        PYTHONPATH="$module_search_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
+        PYTHONPATH="$module_search_path" /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
         ;;
     stray)
         if [ -f "${module_search_path}/requirements.txt" ]; then
             conda run --no-capture-output --name stray pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
-        
-        mkdir -p "$STRAY_ROOT/result"
-        mkdir -p "$STRAY_ROOT/results"
 
-        absolute_module_search_path="$(realpath "$module_search_path")"
-
-        current_working_directory="$(pwd)"
-
-        cd "$STRAY_ROOT"
-
-        set +e
-        python3 "$current_working_directory/print_python_file_paths.py" -q "$query_dict" -s "$absolute_module_search_path" | while read python_file_path
-        do
-            directory_name="$(dirname "$python_file_path")"
-            file_name="$(basename "$python_file_path")"
-            file_name_without_extension="${file_name%.py}"
-
-            echo conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
-            conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
-            echo conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
-            conda run --no-capture-output --name stray python3 -m predict "$directory_name" predict "$file_name_without_extension" 1>&2
-        done
-        set -e
-
-        cd "$current_working_directory"
-
-        python3 "$(pwd)/parse_stray_result_directory.py" --stray-result-directory "$STRAY_ROOT/result" --query-dict "$query_dict" --absolute-module-search-path "$absolute_module_search_path" --output-file "$output_file_path"
+        /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" /bin/bash run_stray.sh -q "$query_dict" -s "$module_search_path" -o "$output_file_path"
         ;;
     hityper)
         if [ -f "${module_search_path}/requirements.txt" ]; then
             conda run --no-capture-output --name hityper pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
 
-        hityper_output_directory="$(pwd)/hityper_output_directory"
-        mkdir -p "$hityper_output_directory"
-
-        python3 "$(pwd)/print_python_file_paths.py" -q "$query_dict" -s "$module_search_path" | while read python_file_path
-        do
-            echo conda run --no-capture-output --name hityper hityper infer -p "$module_search_path" -s "$python_file_path" -d "$hityper_output_directory" -t 1>&2
-            conda run --no-capture-output --name hityper hityper infer -p "$module_search_path" -s "$python_file_path" -d "$hityper_output_directory" -t 1>&2
-        done
-
-        python3 "$(pwd)/parse_hityper_output_directory.py" --hityper-output-directory "$hityper_output_directory" --query-dict "$query_dict" --module-search-path "$module_search_path" --output-file "$output_file_path"
+        /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" /bin/bash run_hityper.sh -q "$query_dict" -s "$module_search_path" -o "$output_file_path"
         ;;
     *)
         # error
