@@ -1,4 +1,6 @@
+import _ast
 import ast
+import asyncio
 import itertools
 import logging
 import typing
@@ -8,10 +10,9 @@ from types import ModuleType, FunctionType
 
 import numpy as np
 
-from attribute_counter import AttributeCounter
 from determine_number_of_type_variables import determine_number_of_type_variables
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
-from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationTuple
+from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationTuple, NonEquivalenceRelationType
 from runtime_term import RuntimeTerm, Instance
 from type_ascription import type_ascription
 from type_definitions import RuntimeClass
@@ -22,13 +23,10 @@ from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, Typeshed
     TypeshedTypeVariable, subscribe, replace_type_variables_in_type_annotation
 
 
-class ClassInference:
-    """
-    Class inference.
-    """
+class TypeInference:
     def __init__(
             self,
-            equivalent_node_disjoint_set_top_nodes_to_attribute_counters: defaultdict[ast.AST, AttributeCounter],
+            equivalent_node_disjoint_set_top_nodes_to_attribute_counters: defaultdict[ast.AST, Counter[str]],
             equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets: defaultdict[ast.AST, set[RuntimeTerm]],
             equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph: NonEquivalenceRelationGraph,
             type_query_database: ClassQueryDatabase,
@@ -259,19 +257,25 @@ class ClassInference:
                         tuple(type_variable_list)
                     )
 
-                    def get_related_nodes(
+                    async def get_related_nodes(
                             nodes: frozenset[ast.AST],
-                            relation_tuple: NonEquivalenceRelationTuple
+                            relation_type: NonEquivalenceRelationType,
+                            parameter: typing.Optional[object] = None
                     ) -> frozenset[ast.AST]:
                         out_edges: set[ast.AST] = set()
 
                         for node in nodes:
-                            out_edges_by_relation_tuple = self.equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph.get_out_edges_by_relation_tuple(node)
-                            out_edges.update(out_edges_by_relation_tuple[relation_tuple])
+                            out_edges.update(
+                                self.equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph.get_out_nodes_with_relation_type_and_parameter(
+                                    node,
+                                    relation_type,
+                                    parameter
+                                )
+                            )
 
                         return frozenset(out_edges)
 
-                    def typeshed_type_variable_ascription_callback(
+                    async def typeshed_type_variable_ascription_callback(
                             nodes: frozenset[ast.AST],
                             typeshed_type_variable: TypeshedTypeVariable,
                             weight: float
@@ -279,20 +283,20 @@ class ClassInference:
                         if typeshed_type_variable in type_variables_to_associated_node_sets:
                             type_variables_to_associated_node_sets[typeshed_type_variable].update(nodes)
 
-                    def typeshed_class_ascription_callback(
+                    async def typeshed_class_ascription_callback(
                             nodes: frozenset[ast.AST],
                             typeshed_class: TypeshedClass,
                             weight: float
                     ):
                         pass
 
-                    type_ascription(
+                    asyncio.run(type_ascription(
                         equivalent_node_disjoint_set_top_nodes,
                         top_class_prediction_subscribed_by_type_variables,
                         get_related_nodes,
                         typeshed_type_variable_ascription_callback,
                         typeshed_class_ascription_callback
-                    )
+                    ))
 
                     # Infer type variables.
 

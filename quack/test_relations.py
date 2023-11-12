@@ -27,50 +27,108 @@ if __name__ == '__main__':
     a, b = ast.AST(), ast.AST()
     graph.add_relation(a, b, NonEquivalenceRelationType.KeyOf)
 
-    assert a in graph.get_in_edges_by_relation_tuple(b)[(NonEquivalenceRelationType.KeyOf,)]
-    assert b in graph.get_out_edges_by_relation_tuple(a)[(NonEquivalenceRelationType.KeyOf,)]
-    assert b == graph.get_or_create_related_node(a, NonEquivalenceRelationType.KeyOf)
-
-    # Retrieving the related node
-    related_node = graph.get_or_create_related_node(a, NonEquivalenceRelationType.ValueOf)
-    assert related_node != a != b
-    assert a in graph.get_in_edges_by_relation_tuple(related_node)[(NonEquivalenceRelationType.ValueOf,)]
-    assert related_node in graph.get_out_edges_by_relation_tuple(a)[(NonEquivalenceRelationType.ValueOf,)]
-    assert related_node == graph.get_or_create_related_node(a, NonEquivalenceRelationType.ValueOf)
-
-    related_node = graph.get_or_create_related_node(a, NonEquivalenceRelationType.ValueOf)
-
-    assert related_node != a != b
-
-    assert a in graph.get_in_edges_by_relation_tuple(related_node)[(NonEquivalenceRelationType.ValueOf,)]
-    assert related_node in graph.get_out_edges_by_relation_tuple(a)[(NonEquivalenceRelationType.ValueOf,)]
+    assert a in graph.get_in_nodes_with_relation_type_and_parameter(b, NonEquivalenceRelationType.KeyOf)
+    assert b in graph.get_out_nodes_with_relation_type_and_parameter(a, NonEquivalenceRelationType.KeyOf)
 
     c = ast.AST()
-    d = graph.get_or_create_related_node(c, NonEquivalenceRelationType.ArgumentOf, 2)
+    d = ast.AST()
+    graph.add_relation(c, d, NonEquivalenceRelationType.ArgumentOf, 2)
 
-    assert c in graph.get_in_edges_by_relation_tuple(d)[(NonEquivalenceRelationType.ArgumentOf, 2)]
-    assert d in graph.get_out_edges_by_relation_tuple(c)[(NonEquivalenceRelationType.ArgumentOf, 2)]
-    assert d == graph.get_or_create_related_node(c, NonEquivalenceRelationType.ArgumentOf, 2)
+    assert c in graph.get_in_nodes_with_relation_type_and_parameter(d, NonEquivalenceRelationType.ArgumentOf, 2)
+    assert d in graph.get_out_nodes_with_relation_type_and_parameter(c, NonEquivalenceRelationType.ArgumentOf, 2)
 
     e = ast.AST()
-
     graph.add_relation(c, e, NonEquivalenceRelationType.ElementOf, 0)
 
-    assert c in graph.get_in_edges_by_relation_tuple(e)[(NonEquivalenceRelationType.ElementOf, 0)]
-    assert e in graph.get_out_edges_by_relation_tuple(c)[(NonEquivalenceRelationType.ElementOf, 0)]
-    assert e == graph.get_or_create_related_node(c, NonEquivalenceRelationType.ElementOf, 0)
+    assert c in graph.get_in_nodes_with_relation_type_and_parameter(e, NonEquivalenceRelationType.ElementOf, 0)
+    assert e in graph.get_out_nodes_with_relation_type_and_parameter(c, NonEquivalenceRelationType.ElementOf, 0)
+
+    f = ast.AST()
+    g = ast.AST()
+    h = ast.AST()
+    i = ast.AST()
+    j = ast.AST()
+    k = ast.AST()
+    l = ast.AST()
+    m = ast.AST()
+
+    graph.add_relation(h, f, NonEquivalenceRelationType.KeyOf)
+    graph.add_relation(i, f, NonEquivalenceRelationType.ValueOf)
+    graph.add_relation(i, g, NonEquivalenceRelationType.ValueOf)
+    graph.add_relation(j, g, NonEquivalenceRelationType.ValueOf)
+    graph.add_relation(f, k, NonEquivalenceRelationType.ValueOf)
+    graph.add_relation(f, l, NonEquivalenceRelationType.KeyOf)
+    graph.add_relation(g, l, NonEquivalenceRelationType.KeyOf)
+    graph.add_relation(g, m, NonEquivalenceRelationType.KeyOf)
+
+    graph.merge_nodes(f, g)
+
+    assert graph.nodes_to_relation_types_to_parameters_to_in_nodes[g] == {
+        NonEquivalenceRelationType.KeyOf: {
+            None: {
+                h
+            }
+        },
+        NonEquivalenceRelationType.ValueOf: {
+            None: {
+                i, j
+            }
+        }
+    }
+
+    assert graph.nodes_to_relation_types_to_parameters_to_out_nodes[g] == {
+        NonEquivalenceRelationType.KeyOf: {
+            None: {
+                l, m
+            }
+        },
+        NonEquivalenceRelationType.ValueOf: {
+            None: {
+                k
+            }
+        }
+    }
+
+    assert graph.nodes_to_relation_types_to_parameters_to_out_nodes[h] == {
+        NonEquivalenceRelationType.KeyOf: {
+            None: {
+                g
+            }
+        },
+    }
+
+    assert graph.nodes_to_relation_types_to_parameters_to_out_nodes[i] == {
+        NonEquivalenceRelationType.ValueOf: {
+            None: {
+                g
+            }
+        },
+    }
+
+    assert graph.nodes_to_relation_types_to_parameters_to_in_nodes[k] == {
+        NonEquivalenceRelationType.ValueOf: {
+            None: {
+                g
+            }
+        },
+    }
+
+    assert graph.nodes_to_relation_types_to_parameters_to_in_nodes[l] == {
+        NonEquivalenceRelationType.KeyOf: {
+            None: {
+                g
+            }
+        },
+    }
 
     copy_graph = graph.copy()
-
-    assert all(
-        node in copy_graph.digraph.nodes
-        for node in graph.digraph.nodes
-    )
-
-    assert all(
-        edge in copy_graph.digraph.edges
-        for edge in graph.digraph.edges
-    )
-
     assert id(graph) != (copy_graph)
-    assert id(copy_graph.digraph) != id(graph.digraph)
+
+    assert copy_graph.nodes == graph.nodes
+    assert id(copy_graph.nodes) != id(graph.nodes)
+
+    assert copy_graph.nodes_to_relation_types_to_parameters_to_in_nodes == graph.nodes_to_relation_types_to_parameters_to_in_nodes
+    assert id(copy_graph.nodes_to_relation_types_to_parameters_to_in_nodes) != id(graph.nodes_to_relation_types_to_parameters_to_in_nodes)
+
+    assert copy_graph.nodes_to_relation_types_to_parameters_to_out_nodes == graph.nodes_to_relation_types_to_parameters_to_out_nodes
+    assert id(copy_graph.nodes_to_relation_types_to_parameters_to_out_nodes) != id(graph.nodes_to_relation_types_to_parameters_to_out_nodes)

@@ -1,3 +1,4 @@
+import _ast
 import argparse
 import ast
 import readline
@@ -6,24 +7,29 @@ import json
 import os
 import sys
 import typing
+from collections import Counter
 from types import ModuleType
 
 import static_import_analysis
-from attribute_counter import AttributeCounter
 from build_ast_node_namespace_trie import build_ast_node_namespace_trie
 from class_query_database import ClassQueryDatabase
-from collect_preliminary_typing_constraints import collect_preliminary_typing_constraints
-from get_definitions_to_runtime_terms_mappings import get_definitions_to_runtime_terms_mappings
-from get_top_level_imported_names_to_runtime_objects_mappings import \
-    get_top_level_imported_names_to_runtime_objects_mappings
+from collect_preliminary_typing_constraints import collect_and_resolve_typing_constraints
+from definitions_to_runtime_terms_mappings import get_definitions_to_runtime_terms_mappings
+from module_names_to_imported_names_to_runtime_objects import \
+    get_module_names_to_imported_names_to_runtime_objects
+from parameter_lists_and_symbolic_return_values import get_parameter_lists_and_symbolic_return_values, \
+    nodes_to_parameter_lists_and_symbolic_return_values
 from query_result_dict import *
 from relations import NonEquivalenceRelationGraph, EquivalenceRelationGraph
-from resolve_typing_constraints import resolve_typing_constraints
+from resolve_typing_constraints import node_disjoint_set, equivalent_set_top_nodes_to_runtime_term_sets, \
+    equivalent_set_top_node_non_equivalence_relation_graph, nodes_to_attribute_counters, \
+    node_non_equivalence_relation_graph
 from runtime_term import RuntimeTerm
 from trie import search
-from type_inference import ClassInference
+from type_inference import TypeInference
 from typeshed_client_ex.client import Client
 from typeshed_client_ex.type_definitions import TypeshedClass, from_runtime_class
+import asyncio
 
 
 def get_indentation(indent_level: int = 0) -> str:
@@ -31,21 +37,20 @@ def get_indentation(indent_level: int = 0) -> str:
 
 
 def node_to_string(node: ast.AST, node_to_module_name_dict: dict[ast.AST, str]) -> str:
-    return ' '.join([
+    return ': '.join([
         str(node),
-        ast.unparse(node),
         str(node_to_module_name_dict.get(node, None)),
         str(getattr(node, 'lineno', None)),
+        ast.unparse(node),
     ])
 
 
 def print_equivalent_sets(
         equivalent_sets: typing.Iterable[set[ast.AST]],
         top_nodes: typing.Iterable[ast.AST],
-        nodes_to_attribute_counters: defaultdict[ast.AST, AttributeCounter],
-        equivalence_relation_graph: EquivalenceRelationGraph,
+        node_attribute_counter: defaultdict[_ast.AST, Counter[str]],
         type_variable_relations: NonEquivalenceRelationGraph,
-        equivalent_type_variable_attribute_counters: defaultdict[ast.AST, AttributeCounter],
+        equivalent_type_variable_attribute_counters: defaultdict[ast.AST, Counter[str]],
         equivalent_type_variable_runtime_term_sets: defaultdict[ast.AST, set[RuntimeTerm]],
         node_to_module_name_dict: dict[ast.AST, str],
         indent_level: int = 0
@@ -60,8 +65,7 @@ def print_equivalent_sets(
         print_equivalent_set(
             equivalent_set,
             top_node,
-            nodes_to_attribute_counters,
-            equivalence_relation_graph,
+            node_attribute_counter,
             type_variable_relations,
             equivalent_type_variable_attribute_counters,
             equivalent_type_variable_runtime_term_sets,
@@ -73,10 +77,9 @@ def print_equivalent_sets(
 def print_equivalent_set(
         equivalent_set: set[ast.AST],
         top_node: ast.AST,
-        nodes_to_attribute_counters: defaultdict[ast.AST, AttributeCounter],
-        equivalence_relation_graph: EquivalenceRelationGraph,
+        node_attribute_counter: defaultdict[_ast.AST, Counter[str]],
         type_variable_relations: NonEquivalenceRelationGraph,
-        equivalent_type_variable_attribute_counters: defaultdict[ast.AST, AttributeCounter],
+        equivalent_type_variable_attribute_counters: defaultdict[ast.AST, Counter[str]],
         equivalent_type_variable_runtime_term_sets: defaultdict[ast.AST, set[RuntimeTerm]],
         node_to_module_name_dict: dict[ast.AST, str],
         indent_level: int = 0
@@ -85,23 +88,11 @@ def print_equivalent_set(
     for node in equivalent_set:
         print_node(
             node,
-            nodes_to_attribute_counters,
-            equivalence_relation_graph,
+            node_attribute_counter,
             type_variable_relations,
             node_to_module_name_dict,
             indent_level + 1
         )
-
-    print(get_indentation(indent_level), 'Equivalence relations:', file=sys.stderr)
-    for first_node, second_node in equivalence_relation_graph.get_equivalence_relations_among_nodes(equivalent_set):
-        print(get_indentation(indent_level + 1), node_to_string(first_node, node_to_module_name_dict), '->',
-              node_to_string(second_node, node_to_module_name_dict), file=sys.stderr)
-
-    print(get_indentation(indent_level), 'Collective attribute counter:', file=sys.stderr)
-    print_attribute_counter(
-        equivalent_type_variable_attribute_counters[top_node],
-        indent_level + 1
-    )
 
     print(get_indentation(indent_level), 'Collective runtime terms:', file=sys.stderr)
     print_runtime_term_set(
@@ -112,8 +103,7 @@ def print_equivalent_set(
 
 def print_node(
         node: ast.AST,
-        nodes_to_attribute_counters: defaultdict[ast.AST, AttributeCounter],
-        equivalence_relation_graph: EquivalenceRelationGraph,
+        node_attribute_counter: defaultdict[_ast.AST, Counter[str]],
         type_variable_relations: NonEquivalenceRelationGraph,
         node_to_module_name_dict,
         indent_level: int = 0,
@@ -127,20 +117,22 @@ def print_node(
           file=sys.stderr)
     print(get_indentation(indent_level + 1), 'Attribute counter:', file=sys.stderr)
     print_attribute_counter(
-        nodes_to_attribute_counters[node],
+        node,
+        node_attribute_counter,
         indent_level + 2
     )
     print(get_indentation(indent_level + 1), 'Related nodes:', file=sys.stderr)
-    print_related_nodes(node, nodes_to_attribute_counters, equivalence_relation_graph, type_variable_relations, node_to_module_name_dict,
+    print_related_nodes(node, node_attribute_counter, type_variable_relations, node_to_module_name_dict,
                         indent_level + 2,
                         exclude | frozenset([node]))
 
 
 def print_attribute_counter(
-        attribute_counter: AttributeCounter,
+        node: _ast.AST,
+        node_attribute_counter: defaultdict[_ast.AST, Counter[str]],
         indent_level: int = 0
 ):
-    for key, value in attribute_counter.items():
+    for key, value in node_attribute_counter[node].items():
         print(get_indentation(indent_level), key, value, file=sys.stderr)
 
 
@@ -154,18 +146,18 @@ def print_runtime_term_set(
 
 def print_related_nodes(
         node: ast.AST,
-        nodes_to_attribute_counters: defaultdict[ast.AST, AttributeCounter],
-        equivalence_relation_graph: EquivalenceRelationGraph,
+        node_attribute_counter: defaultdict[_ast.AST, Counter[str]],
         type_variable_relations: NonEquivalenceRelationGraph,
         node_to_module_name_dict: dict[ast.AST, str],
         indent_level: int = 0,
         exclude: frozenset[ast.AST] = frozenset()
 ):
-    for relation_tuple, related_node_set in type_variable_relations.get_out_edges_by_relation_tuple(node).items():
-        print(get_indentation(indent_level), relation_tuple, file=sys.stderr)
-        for related_node in related_node_set:
-            print_node(related_node, nodes_to_attribute_counters, equivalence_relation_graph, type_variable_relations, node_to_module_name_dict,
-                       indent_level + 1, exclude)
+    for relation_type, parameter_to_related_node_set in type_variable_relations.get_out_nodes(node).items():
+        for parameter, related_node_set in parameter_to_related_node_set.items():
+            print(get_indentation(indent_level), relation_type, parameter, file=sys.stderr)
+            for related_node in related_node_set:
+                print_node(related_node, node_attribute_counter, type_variable_relations, node_to_module_name_dict,
+                           indent_level + 1, exclude)
 
 
 def main():
@@ -178,6 +170,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--module-search-path', type=str, required=True,
                         help='Module search path, e.g. /tmp/module_search_path')
+    parser.add_argument('-p', '--module-prefix', type=str, required=True,
+                        help="Module prefix")
     parser.add_argument('-o', '--output-file', type=str, required=False,
                         default='output.json',
                         help='Output JSON file')
@@ -186,6 +180,7 @@ def main():
     args = parser.parse_args()
 
     module_search_absolute_path: str = os.path.abspath(args.module_search_path)
+    module_prefix: str = args.module_prefix
     output_file: str = args.output_file
     is_interactive: bool = args.interactive
 
@@ -200,7 +195,7 @@ def main():
         module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
         module_name_to_import_tuple_set_dict,
         module_name_to_import_from_tuple_set_dict
-    ) = static_import_analysis.do_static_import_analysis(module_search_absolute_path)
+    ) = static_import_analysis.do_static_import_analysis(module_search_absolute_path, module_prefix)
 
     # Import modules
     sys.path.insert(0, module_search_absolute_path)
@@ -215,51 +210,30 @@ def main():
     module_list = list(module_name_to_module.values())
     module_node_list = [module_name_to_module_node_dict[module_name] for module_name in module_name_to_module]
 
-    (
-        top_level_class_definitions_to_runtime_classes,
-        unwrapped_runtime_functions_to_named_function_definitions
-    ) = get_definitions_to_runtime_terms_mappings(
+    get_parameter_lists_and_symbolic_return_values(module_node_list)
+
+    ast_node_namespace_trie_root = build_ast_node_namespace_trie(
+        module_name_list,
+        module_node_list
+    )
+
+    import debugging
+
+    get_definitions_to_runtime_terms_mappings(
         module_name_list,
         module_list,
         module_node_list
     )
 
-    module_names_to_imported_names_to_runtime_objects = get_top_level_imported_names_to_runtime_objects_mappings(
+    get_module_names_to_imported_names_to_runtime_objects(
         module_name_to_import_tuple_set_dict,
         module_name_to_import_from_tuple_set_dict,
         sys.modules
     )
 
-    (
-        nodes_to_attribute_counters,
-        nodes_to_runtime_term_sets,
-        nodes_providing_scope_to_parameter_lists_and_return_value_sets,
-        equivalence_relation_graph,
-        non_equivalence_relation_graph
-    ) = collect_preliminary_typing_constraints(
-        top_level_class_definitions_to_runtime_classes,
-        unwrapped_runtime_functions_to_named_function_definitions,
-        module_names_to_imported_names_to_runtime_objects,
+    asyncio.run(collect_and_resolve_typing_constraints(
         module_name_to_module_node_dict
-    )
-
-    (
-        equivalent_node_disjoint_set,
-        new_equivalence_relation_graph,
-        new_non_equivalence_relation_graph,
-        new_nodes_to_attribute_counters,
-        equivalent_node_disjoint_set_top_nodes_to_attribute_counters,
-        equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets,
-        equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph
-    ) = resolve_typing_constraints(
-        unwrapped_runtime_functions_to_named_function_definitions,
-        nodes_to_attribute_counters,
-        nodes_to_runtime_term_sets,
-        nodes_providing_scope_to_parameter_lists_and_return_value_sets,
-        equivalence_relation_graph,
-        non_equivalence_relation_graph,
-        client
-    )
+    ))
 
     # Initialize class query database
     module_set: set[ModuleType] = set(module_name_to_module.values())
@@ -284,17 +258,18 @@ def main():
     )
 
     # Initialize type inference
-    type_inference = ClassInference(
-        equivalent_node_disjoint_set_top_nodes_to_attribute_counters,
-        equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets,
-        equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph,
+    equivalent_set_top_nodes_to_attribute_counters: defaultdict[_ast.AST, Counter[str]] = defaultdict(Counter)
+    for equivalent_set_top_node, equivalent_set in node_disjoint_set.itersets():
+        for node in equivalent_set:
+            equivalent_set_top_nodes_to_attribute_counters[equivalent_set_top_node] += nodes_to_attribute_counters[node]
+
+    type_inference = TypeInference(
+        equivalent_set_top_nodes_to_attribute_counters,
+        equivalent_set_top_nodes_to_runtime_term_sets,
+        equivalent_set_top_node_non_equivalence_relation_graph,
         class_query_database,
         client
     )
-
-    top_node_to_equivalent_set: defaultdict[ast.AST, set[ast.AST]] = defaultdict(set)
-    for top_node, equivalent_set in equivalent_node_disjoint_set.itersets():
-        top_node_to_equivalent_set[top_node] = equivalent_set
 
     # Run type inference
 
@@ -307,28 +282,22 @@ def main():
         top_node_list = list(top_node_frozenset)
 
         equivalent_set_list = [
-            top_node_to_equivalent_set[top_node]
+            node_disjoint_set.get_containing_set(top_node)
             for top_node in top_node_list
         ]
 
         print_equivalent_sets(
             equivalent_set_list,
             top_node_list,
-            new_nodes_to_attribute_counters,
-            new_equivalence_relation_graph,
-            new_non_equivalence_relation_graph,
-            equivalent_node_disjoint_set_top_nodes_to_attribute_counters,
-            equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets,
+            nodes_to_attribute_counters,
+            node_non_equivalence_relation_graph,
+            equivalent_set_top_nodes_to_attribute_counters,
+            equivalent_set_top_nodes_to_runtime_term_sets,
             node_to_module_name_dict,
             indent_level + 1
         )
 
     if is_interactive:
-        ast_node_namespace_trie_root = build_ast_node_namespace_trie(
-            module_name_list,
-            module_node_list
-        )
-
         while True:
             user_input = input(
                 'Enter the full containing namespace and name of the node (e.g. module_name class_name function_name name):')
@@ -356,7 +325,7 @@ def main():
             node_set = containing_namespace_trie_root.value[name]
 
             top_node_frozenset = frozenset({
-                equivalent_node_disjoint_set.find(node)
+                node_disjoint_set.find(node)
                 for node in node_set
             })
 
@@ -395,18 +364,22 @@ def main():
                 for function_node in function_node_set:
                     function_name = function_node.name
 
-                    parameter_list, return_value_set = nodes_providing_scope_to_parameter_lists_and_return_value_sets[
+                    parameter_list, symbolic_return_value = nodes_to_parameter_lists_and_symbolic_return_values[
                         function_node
                     ]
 
-                    parameter_names_to_parameter_node_sets: dict[str, set[ast.AST]] = {
-                        'return': return_value_set
-                    }
+                    parameter_names_to_parameter_nodes: dict[str, _ast.AST] = {}
 
-                    for parameter in parameter_list:
-                        parameter_names_to_parameter_node_sets[parameter.arg] = {parameter}
+                    # Do not infer return value types for __init__ and __new__ of classes.
+                    if not (class_name != 'global' and function_name in ('__init__', '__new__')):
+                        parameter_names_to_parameter_nodes['return'] = symbolic_return_value
 
-                    for parameter_name, parameter_node_set in parameter_names_to_parameter_node_sets.items():
+                    # Do not infer parameter types for self and cls in methods of classes.
+                    for i, parameter in enumerate(parameter_list):
+                        if not (class_name != 'global' and i == 0 and parameter.arg in ('self', 'cls')):
+                            parameter_names_to_parameter_nodes[parameter.arg] = parameter
+
+                    for parameter_name, parameter_node in parameter_names_to_parameter_nodes.items():
                         logging.info(
                             'Inferring types for %s::%s::%s::%s',
                             module_name,
@@ -415,19 +388,11 @@ def main():
                             parameter_name
                         )
 
-                        top_node_frozenset = frozenset({
-                            equivalent_node_disjoint_set.find(node)
-                            for node in parameter_node_set
-                        })
+                        top_node = node_disjoint_set.find(parameter_node)
 
                         type_inference_result = type_inference.infer_type_for_equivalent_node_disjoint_set_top_nodes(
-                            top_node_frozenset,
+                            frozenset([top_node]),
                             class_inference_callback=class_inference_print_equivalent_set_callback,
-                            first_level_class_inference_failed_fallback=(
-                                from_runtime_class(type(None))
-                                if parameter_name == 'return'
-                                else TypeshedClass('typing', 'Any')
-                            )
                         )
 
                         raw_result_defaultdict[module_name][class_name][function_name][parameter_name].append(

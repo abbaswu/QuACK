@@ -3,6 +3,8 @@ import collections.abc
 import logging
 import numbers
 import typing
+import types
+
 from collections import Counter
 from math import log
 from types import ModuleType
@@ -122,7 +124,11 @@ class ClassQueryDatabase:
                 typing.SupportsRound,
                 typing.SupportsAbs,
                 typing.TextIO,
-                typing.IO
+                typing.IO,
+                types.CellType,
+                types.TracebackType,
+                types.FrameType,
+                types.CodeType,
         ):
             attributes_in_runtime_class = get_attributes_in_runtime_class(runtime_class)
             add(attribute_set_trie_root, attributes_in_runtime_class)
@@ -135,6 +141,7 @@ class ClassQueryDatabase:
 
         excluded_module_names = (
             'builtins',
+            'types',
             'typing',
             'typing_extensions',
             'collections.abc',

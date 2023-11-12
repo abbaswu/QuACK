@@ -1,9 +1,16 @@
 import logging
 
 from get_dict_for_runtime_class import get_comprehensive_dict_for_runtime_class
-from scoped_node_visitor import *
+from node_visitor import *
 from type_definitions import *
 from unwrap import unwrap
+
+top_level_class_definitions_to_runtime_classes: dict[ast.ClassDef, RuntimeClass] = dict()
+
+unwrapped_runtime_functions_to_named_function_definitions: dict[
+    UnwrappedRuntimeFunction,
+    NamedFunctionDefinition
+] = dict()
 
 
 def get_definitions_to_runtime_terms_mappings(
@@ -69,10 +76,6 @@ def get_definitions_to_runtime_terms_mappings(
 
         ScopedNodeVisitor(get_scoped_node_visitor_callback(module_name)).visit(module_node)
 
-    top_level_class_definitions_to_runtime_classes: dict[ast.ClassDef, RuntimeClass] = dict()
-    unwrapped_runtime_functions_to_named_function_definitions: dict[
-        UnwrappedRuntimeFunction, NamedFunctionDefinition] = dict()
-
     for real_name_tuple, top_level_class_definition in real_name_tuples_of_top_level_class_definitions.items():
         if real_name_tuple in real_name_tuples_of_runtime_classes:
             runtime_class = real_name_tuples_of_runtime_classes[real_name_tuple]
@@ -91,5 +94,3 @@ def get_definitions_to_runtime_terms_mappings(
             logging.info('Matched unwrapped runtime function %s to named function definition %s', '.'.join(real_name_tuple), ast.unparse(named_function_definition))
         else:
             logging.error('Cannot match unwrapped runtime function %s to a named function definition!', '.'.join(real_name_tuple))
-
-    return top_level_class_definitions_to_runtime_classes, unwrapped_runtime_functions_to_named_function_definitions

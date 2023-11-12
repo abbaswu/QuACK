@@ -3,6 +3,8 @@ import logging
 
 from typing import Callable
 
+import lark
+
 from lark import Lark, Token, Tree
 
 from static_import_analysis import do_static_import_analysis
@@ -13,10 +15,12 @@ from type_inference_result import TypeInferenceResult
 builtin_class_names: set[str] = {k for k, v in builtins.__dict__.items() if isinstance(v, type)}
 
 parser: Lark = Lark(r"""
-type_annotation: class | subscription
+type_annotation: class | subscription | none | ellipsis
 class: NAME ("." NAME)* | "'" NAME ("." NAME)* "'" | "\"" NAME ("." NAME)* "\""
 subscription: class "[" subscription_list_element ("," subscription_list_element)*"]"
 subscription_list_element: type_annotation | 
+none: "None"
+ellipsis: "..."
 
 %import common.WS
 %import python.NAME
@@ -45,6 +49,10 @@ def handle_type_annotation_tree(
             class_or_subscription_tree,
             name_to_defined_or_imported_class_dict
         )
+    elif rule == 'none':
+        return TypeInferenceResult(TypeInferenceClass('builtins', 'NoneType'))
+    elif rule == 'ellipsis':
+        return TypeInferenceResult(TypeInferenceClass('builtins', 'Ellipsis'))
     else:
         assert False
 
@@ -57,11 +65,8 @@ def handle_class_tree(
     names: list[str] = [child.value for child in class_tree.children]
     if len(names) == 1:
         name: str = names[0]
-        # Resolve None to builtins.NoneType
-        if name == 'None':
-            return TypeInferenceClass('builtins', 'NoneType')
         # Resolve built-in classes
-        elif name in builtin_class_names:
+        if name in builtin_class_names:
             return TypeInferenceClass('builtins', name)
         # Resolve defined or imported class
         elif name in name_to_defined_or_imported_class_dict:
@@ -166,11 +171,18 @@ def get_type_annotation_parser(
             dict()
         )
 
-        type_annotation_tree: Tree = parser.parse(type_annotation_string)
-        return handle_type_annotation_tree(
-            type_annotation_tree,
-            name_to_defined_or_imported_class_dict
-        )
+        try:
+            type_annotation_tree: Tree = parser.parse(type_annotation_string)
+
+            return handle_type_annotation_tree(
+                type_annotation_tree,
+                name_to_defined_or_imported_class_dict
+            )
+        except lark.exceptions.LarkError:
+            logging.error('Cannot resolve type annotation %s. Leaving the type annotation as is.', type_annotation_string)
+            
+            return TypeInferenceResult(TypeInferenceClass(None, type_annotation_string))
+
 
     # Return type_annotation_parser
     return type_annotation_parser

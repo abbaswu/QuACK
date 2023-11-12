@@ -92,8 +92,6 @@ def get_attributes_accessed_on_self_in_method(code: CodeType) -> Generator[str, 
 def get_dynamic_attributes_in_runtime_class(runtime_class: RuntimeClass) -> set[str]:
     dynamic_attributes_in_runtime_class: set[str] = set()
 
-    if not hasattr(runtime_class, '__mro__'):
-        print()
     for mro_class in runtime_class.__mro__:
         unwrapped_constructor = get_unwrapped_constructor(mro_class)
         if isinstance(unwrapped_constructor, FunctionType):

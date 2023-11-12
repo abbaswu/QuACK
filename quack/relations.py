@@ -1,6 +1,7 @@
 """
 Relations among type variables.
 """
+import _ast
 import ast
 import typing
 from collections import defaultdict
@@ -35,142 +36,199 @@ NonEquivalenceRelationTuple = tuple[NonEquivalenceRelationType, ...]
 
 
 class NonEquivalenceRelationGraph:
-    def __init__(self, digraph: typing.Optional[nx.DiGraph] = None):
-        if digraph is not None:
-            self.digraph = digraph
-        else:
-            self.digraph = nx.DiGraph()
+    def __init__(self):
+        self.nodes: set[_ast.AST] = set()
 
-    def add_node(self, node: ast.AST):
-        self.digraph.add_node(node)
+        self.nodes_to_relation_types_to_parameters_to_out_nodes: defaultdict[
+            _ast.AST,
+            defaultdict[
+                NonEquivalenceRelationType,
+                defaultdict[
+                    typing.Optional[object],
+                    set[_ast.AST]
+                ]
+            ]
+        ] = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
-    def add_relation(self, from_: ast.AST, to: ast.AST, relation_type: NonEquivalenceRelationType,
-                     parameter: typing.Optional[object] = None) -> None:
-        self.digraph.add_edge(from_, to)
+        self.nodes_to_relation_types_to_parameters_to_in_nodes: defaultdict[
+            _ast.AST,
+            defaultdict[
+                NonEquivalenceRelationType,
+                defaultdict[
+                    typing.Optional[object],
+                    set[_ast.AST]
+                ]
+            ]
+        ] = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
 
-        if parameter is None:
-            relation_tuple = (relation_type,)
-        else:
-            relation_tuple = (relation_type, parameter)
-
-        self.digraph.edges[from_, to].setdefault(relation_tuple)
-
-    def get_or_create_related_node(self, from_: ast.AST, relation_type: NonEquivalenceRelationType,
-                                   parameter: typing.Optional[object] = None) -> ast.AST:
-        if parameter is None:
-            relation_tuple = (relation_type,)
-        else:
-            relation_tuple = (relation_type, parameter)
-
-        if from_ in self.digraph:
-            atlas_view = self.digraph[from_]
-
-            related_node: ast.AST | None = next(
-                (k for k, v in atlas_view.items() if relation_tuple in v),
-                None
-            )
-
-            if related_node is None:
-                # No related node available. Create one and return it.
-                dummy_node = ast.AST()
-
-                self.digraph.add_edge(from_, dummy_node)
-                self.digraph.edges[from_, dummy_node].setdefault(relation_tuple)
-
-                return dummy_node
-            else:
-                # Related node found. Return it.
-                return related_node
-        else:
-            dummy_node = ast.AST()
-
-            self.digraph.add_edge(from_, dummy_node)
-            self.digraph.edges[from_, dummy_node].setdefault(relation_tuple)
-
-            return dummy_node
-
-    def get_or_create_inversely_related_node(self, to: ast.AST, relation_type: NonEquivalenceRelationType,
-                                             parameter: typing.Optional[object] = None) -> ast.AST:
-        if parameter is None:
-            relation_tuple = (relation_type,)
-        else:
-            relation_tuple = (relation_type, parameter)
-
-        if to in self.digraph:
-            inversely_related_node: ast.AST | None = next(
-                (from_ for from_, _, data in self.digraph.in_edges(nbunch=to, data=True) if relation_tuple in data),
-                None
-            )
-
-            if inversely_related_node is None:
-                # No inversely related node available. Create one and return it.
-                dummy_node = ast.AST()
-
-                self.digraph.add_edge(dummy_node, to)
-                self.digraph.edges[dummy_node, to].setdefault(relation_tuple)
-
-                return dummy_node
-            else:
-                # Inversely related node found. Return it.
-                return inversely_related_node
-        else:
-            dummy_node = ast.AST()
-
-            self.digraph.add_edge(dummy_node, to)
-            self.digraph.edges[dummy_node, to].setdefault(relation_tuple)
-
-            return dummy_node
-
-    def iterate_relations(self) -> typing.Iterator[tuple[ast.AST, ast.AST, NonEquivalenceRelationTuple]]:
-        for from_, to, relation_tuples in self.digraph.edges(data=True):
-            for relation_tuple in relation_tuples:
-                yield from_, to, relation_tuple
+    def __contains__(self, item: _ast.AST) -> bool:
+        return item in self.nodes
 
     def copy(self):
-        return NonEquivalenceRelationGraph(self.digraph.copy())
+        new_graph = NonEquivalenceRelationGraph()
 
-    def get_in_edges_by_relation_tuple(self, to: ast.AST) -> defaultdict[NonEquivalenceRelationTuple, set[ast.AST]]:
-        in_edges_by_relation_tuple: defaultdict[NonEquivalenceRelationTuple, set[ast.AST]] = defaultdict(set)
+        new_graph.nodes.update(self.nodes)
 
-        if to in self.digraph.nodes:
-            for from_, _, relation_tuples in self.digraph.in_edges(to, data=True):
-                for relation_tuple in relation_tuples:
-                    in_edges_by_relation_tuple[relation_tuple].add(from_)
+        for node, relation_types_to_parameters_to_out_nodes in self.nodes_to_relation_types_to_parameters_to_out_nodes.items():
+            for relation_type, parameters_to_out_nodes in relation_types_to_parameters_to_out_nodes.items():
+                for parameter, out_nodes in parameters_to_out_nodes.items():
+                    new_graph.nodes_to_relation_types_to_parameters_to_out_nodes[node][relation_type][parameter].update(out_nodes)
 
-        return in_edges_by_relation_tuple
+        for node, relation_types_to_parameters_to_in_nodes in self.nodes_to_relation_types_to_parameters_to_in_nodes.items():
+            for relation_type, parameters_to_in_nodes in relation_types_to_parameters_to_in_nodes.items():
+                for parameter, in_nodes in parameters_to_in_nodes.items():
+                    new_graph.nodes_to_relation_types_to_parameters_to_in_nodes[node][relation_type][parameter].update(in_nodes)
 
-    def get_out_edges_by_relation_tuple(self, from_: ast.AST) -> defaultdict[NonEquivalenceRelationTuple, set[ast.AST]]:
-        out_edges_by_relation_tuple: defaultdict[NonEquivalenceRelationTuple, set[ast.AST]] = defaultdict(set)
+        return new_graph
 
-        if from_ in self.digraph.nodes:
-            for _, to, relation_tuples in self.digraph.out_edges(from_, data=True):
-                for relation_tuple in relation_tuples:
-                    out_edges_by_relation_tuple[relation_tuple].add(to)
+    def add_node(self, node: _ast.AST) -> None:
+        self.nodes.add(node)
 
-        return out_edges_by_relation_tuple
+    def add_relation(
+            self,
+            from_: _ast.AST,
+            to: _ast.AST,
+            relation_type: NonEquivalenceRelationType,
+            parameter: typing.Optional[object] = None
+    ) -> None:
+        self.nodes.add(from_)
 
-    def get_all_out_edges_by_relation_tuple(self, froms: typing.AbstractSet[ast.AST]):
-        all_out_edges_by_relation_tuple: defaultdict[NonEquivalenceRelationTuple, set[ast.AST]] = defaultdict(set)
+        self.nodes.add(to)
 
-        for from_ in froms:
-            if from_ in self.digraph.nodes:
-                for _, to, relation_tuples in self.digraph.out_edges(from_, data=True):
-                    for relation_tuple in relation_tuples:
-                        all_out_edges_by_relation_tuple[relation_tuple].add(to)
+        self.nodes_to_relation_types_to_parameters_to_out_nodes[from_][relation_type][parameter].add(to)
+        self.nodes_to_relation_types_to_parameters_to_in_nodes[to][relation_type][parameter].add(from_)
 
-        return all_out_edges_by_relation_tuple
+    def has_relation(
+            self,
+            from_node: _ast.AST,
+            to_node: _ast.AST,
+            relation_type: NonEquivalenceRelationType,
+            parameter: typing.Optional[object] = None
+    ) -> bool:
+        return to_node in self.nodes_to_relation_types_to_parameters_to_out_nodes[from_node][relation_type][parameter]
 
-    def iterate_nodes_and_out_edges_by_relation_tuple(self) -> typing.Iterator[
-        tuple[ast.AST, defaultdict[NonEquivalenceRelationTuple, set[ast.AST]]]]:
-        for node in self.digraph.nodes:
-            out_edges_by_relation_tuple: defaultdict[NonEquivalenceRelationTuple, set[ast.AST]] = defaultdict(set)
+    def get_in_nodes_with_relation_type_and_parameter(self, to: _ast.AST, relation_type: NonEquivalenceRelationType, parameter: typing.Optional[object] = None) -> set[_ast.AST]:
+        if to in self.nodes:
+            relation_types_to_parameters_to_in_nodes = self.nodes_to_relation_types_to_parameters_to_in_nodes[to]
+            if relation_type in relation_types_to_parameters_to_in_nodes:
+                parameters_to_in_nodes = relation_types_to_parameters_to_in_nodes[relation_type]
+                if parameter in parameters_to_in_nodes:
+                    return parameters_to_in_nodes[parameter]
 
-            for _, to, relation_tuples in self.digraph.out_edges(node, data=True):
-                for relation_tuple in relation_tuples:
-                    out_edges_by_relation_tuple[relation_tuple].add(to)
+        return set()
 
-            yield node, out_edges_by_relation_tuple
+    def get_out_nodes(self, from_: _ast.AST) -> dict[NonEquivalenceRelationType, dict[object, set[_ast.AST]]]:
+        if from_ in self.nodes:
+            # Return a copy to prevent modification of the graph
+            return {
+                relation_type: {
+                    parameter: {
+                        out_node
+                        for out_node in out_nodes
+                    }
+                    for parameter, out_nodes in parameters_to_out_nodes.items()
+                }
+                for relation_type, parameters_to_out_nodes in self.nodes_to_relation_types_to_parameters_to_out_nodes[from_].items()
+            }
 
-    def remove_node(self, node: ast.AST) -> None:
-        if node in self.digraph.nodes:
-            self.digraph.remove_node(node)
+        return dict()
+
+    def get_out_nodes_with_relation_type(self, from_: _ast.AST, relation_type: NonEquivalenceRelationType) -> dict[object, set[_ast.AST]]:
+        if from_ in self.nodes:
+            relation_types_to_parameters_to_out_nodes = self.nodes_to_relation_types_to_parameters_to_out_nodes[from_]
+            if relation_type in relation_types_to_parameters_to_out_nodes:
+                # Return a copy to prevent modification of the graph
+                return {
+                    parameter: {
+                        out_node
+                        for out_node in out_nodes
+                    }
+                    for parameter, out_nodes in relation_types_to_parameters_to_out_nodes[relation_type].items()
+                }
+
+        return dict()
+
+    def get_out_nodes_with_relation_type_and_parameter(self, from_: _ast.AST, relation_type: NonEquivalenceRelationType, parameter: typing.Optional[object] = None) -> set[_ast.AST]:
+        if from_ in self.nodes:
+            relation_types_to_parameters_to_out_nodes = self.nodes_to_relation_types_to_parameters_to_out_nodes[from_]
+            if relation_type in relation_types_to_parameters_to_out_nodes:
+                parameters_to_out_nodes = relation_types_to_parameters_to_out_nodes[relation_type]
+                if parameter in parameters_to_out_nodes:
+                    # Return a copy to prevent modification of the graph
+                    return parameters_to_out_nodes[parameter].copy()
+
+        return set()
+
+    def get_all_relation_types_and_parameters(self, from_: _ast.AST) -> list[tuple[NonEquivalenceRelationType, typing.Optional[object]]]:
+        relation_types_and_parameters = list()
+
+        if from_ in self.nodes:
+            relation_types_to_parameters_to_out_nodes = self.nodes_to_relation_types_to_parameters_to_out_nodes[from_]
+            for relation_type, parameters_to_out_nodes in relation_types_to_parameters_to_out_nodes.items():
+                for parameter in parameters_to_out_nodes.keys():
+                    relation_types_and_parameters.append((relation_type, parameter))
+
+        return relation_types_and_parameters
+
+    def merge_nodes(self, target_node: _ast.AST, acquirer_node: _ast.AST):
+        if target_node != acquirer_node:
+            self.add_node(target_node)
+            self.add_node(acquirer_node)
+
+            # For each in-edge (in_node, relation_type, parameter) of target_node,
+            # Identify (in_node, relation_type, parameter) triples such that (in_node, relation_type, parameter) is not an in-edge of acquirer_node
+            # Add (in_node, relation_type, parameter) as an in-edge of acquirer_node,
+            # (relation_type, parameter, acquirer_node) as an out-edge of in_node.
+            in_node_relation_type_parameter_triples_to_deal_with: set[tuple[_ast.AST, NonEquivalenceRelationType, typing.Optional[object]]] = set()
+
+            for relation_type, parameters_to_in_nodes in self.nodes_to_relation_types_to_parameters_to_in_nodes[target_node].items():
+                for parameter, in_nodes in parameters_to_in_nodes.items():
+                    for in_node in in_nodes:
+                        if in_node not in self.nodes_to_relation_types_to_parameters_to_in_nodes[acquirer_node][relation_type][parameter]:
+                            in_node_relation_type_parameter_triples_to_deal_with.add((in_node, relation_type, parameter))
+
+            for in_node, relation_type, parameter in in_node_relation_type_parameter_triples_to_deal_with:
+                self.nodes_to_relation_types_to_parameters_to_in_nodes[acquirer_node][relation_type][parameter].add(in_node)
+                self.nodes_to_relation_types_to_parameters_to_out_nodes[in_node][relation_type][parameter].add(acquirer_node)
+
+            # For each out-edge (relation_type, parameter, out_node) of target_node,
+            # Identify (relation_type, parameter, out_node) triples such that (relation_type, parameter, out_node) is not an out-edge of acquirer_node
+            # Add (relation_type, parameter, out_node) as an out-edge of acquirer_node,
+            # (acquirer_node, relation_type, parameter) as an in-edge of out_node,
+            relation_type_parameter_out_node_triples_to_deal_with: set[tuple[NonEquivalenceRelationType, typing.Optional[object], _ast.AST]] = set()
+
+            for relation_type, parameters_to_out_nodes in self.nodes_to_relation_types_to_parameters_to_out_nodes[target_node].items():
+                for parameter, out_nodes in parameters_to_out_nodes.items():
+                    for out_node in out_nodes:
+                        if out_node not in self.nodes_to_relation_types_to_parameters_to_out_nodes[acquirer_node][relation_type][parameter]:
+                            relation_type_parameter_out_node_triples_to_deal_with.add((relation_type, parameter, out_node))
+
+            for relation_type, parameter, out_node in relation_type_parameter_out_node_triples_to_deal_with:
+                self.nodes_to_relation_types_to_parameters_to_out_nodes[acquirer_node][relation_type][parameter].add(out_node)
+                self.nodes_to_relation_types_to_parameters_to_in_nodes[out_node][relation_type][parameter].add(acquirer_node)
+
+            # Remove target_node from the graph
+            self.nodes.remove(target_node)
+
+            for relation_type, parameters_to_in_nodes in self.nodes_to_relation_types_to_parameters_to_in_nodes[target_node].items():
+                for parameter, in_nodes in parameters_to_in_nodes.items():
+                    for in_node in in_nodes:
+                        self.nodes_to_relation_types_to_parameters_to_out_nodes[in_node][relation_type][parameter].remove(target_node)
+
+            del self.nodes_to_relation_types_to_parameters_to_in_nodes[target_node]
+
+            for relation_type, parameters_to_out_nodes in self.nodes_to_relation_types_to_parameters_to_out_nodes[target_node].items():
+                for parameter, out_nodes in parameters_to_out_nodes.items():
+                    for out_node in out_nodes:
+                        self.nodes_to_relation_types_to_parameters_to_in_nodes[out_node][relation_type][parameter].remove(target_node)
+
+            del self.nodes_to_relation_types_to_parameters_to_out_nodes[target_node]
+
+            return in_node_relation_type_parameter_triples_to_deal_with | {
+                (acquirer_node, relation_type, parameter)
+                for relation_type, parameter, out_node in relation_type_parameter_out_node_triples_to_deal_with
+            }
+        else:
+            import pudb
+            pudb.set_trace()
+            return set()

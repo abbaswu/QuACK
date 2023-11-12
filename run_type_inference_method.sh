@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
+
+set -e
+set -o pipefail
 
 # Constants
 
@@ -43,7 +46,10 @@ module_search_path=
 # Output file path, pass with option `-o`
 output_file_path=
 
-while getopts ':m:q:s:o:' name
+# Module prefix, pass with option `-p`
+module_prefix=
+
+while getopts ':m:q:s:o:p:' name
 do
     case $name in
         m)
@@ -59,6 +65,9 @@ do
         o)
             output_file_path="$OPTARG"
             ;;
+        p)
+            module_prefix="$OPTARG"
+            ;;
         :)
             echo "Option -$OPTARG requires an argument"
             ;;
@@ -70,9 +79,9 @@ done
 
 # Sanity check
 
-if [ -z "$method" ] || [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ]
+if [ -z "$method" ] || [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ] || [ -z "$module_prefix" ]
 then
-    echo "Usage: $0 -m <method> -q <query_dict> -s <module_search_path> -o <output_file_path>" >&2
+    echo "Usage: $0 -m <method> -q <query_dict> -s <module_search_path> -o <output_file_path> -p <module_prefix>" >&2
     exit 1
 fi
 
@@ -129,11 +138,16 @@ case "$method" in
     quack)
         output_file="$module_search_path/output_file.json"
         
-        conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        PYTHONPATH="$module_search_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --module-search-path "$module_search_path" --output-file "$output_file_path"
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
+
+        PYTHONPATH="$module_search_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
         ;;
     stray)
-        conda run --no-capture-output --name stray pip install -r "${module_search_path}/requirements.txt" 1>&2
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name stray pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
         
         mkdir -p "$STRAY_ROOT/result"
         mkdir -p "$STRAY_ROOT/results"
@@ -144,6 +158,7 @@ case "$method" in
 
         cd "$STRAY_ROOT"
 
+        set +e
         python3 "$current_working_directory/print_python_file_paths.py" -q "$query_dict" -s "$absolute_module_search_path" | while read python_file_path
         do
             directory_name="$(dirname "$python_file_path")"
@@ -155,13 +170,16 @@ case "$method" in
             echo conda run --no-capture-output --name stray python3 -m predict "$directory_name" check "$file_name_without_extension" 1>&2
             conda run --no-capture-output --name stray python3 -m predict "$directory_name" predict "$file_name_without_extension" 1>&2
         done
+        set -e
 
         cd "$current_working_directory"
 
         python3 "$(pwd)/parse_stray_result_directory.py" --stray-result-directory "$STRAY_ROOT/result" --query-dict "$query_dict" --absolute-module-search-path "$absolute_module_search_path" --output-file "$output_file_path"
         ;;
     hityper)
-        conda run --no-capture-output --name hityper pip install -r "${module_search_path}/requirements.txt" 1>&2
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name hityper pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
 
         hityper_output_directory="$(pwd)/hityper_output_directory"
         mkdir -p "$hityper_output_directory"

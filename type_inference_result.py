@@ -1,3 +1,4 @@
+import typing
 from typing import Generator
 
 from lark import Lark, Token, Tree
@@ -81,7 +82,7 @@ class: NAME ("." NAME)* | none | ellipsis
 none: "None"
 ellipsis: "..."
 subscription: class filled_type_variable_list
-filled_type_variable_list: "[" filled_type_variable_list_element ("," filled_type_variable_list_element)* "]"
+filled_type_variable_list: "[" filled_type_variable_list_element? ("," filled_type_variable_list_element)* "]"
 filled_type_variable_list_element: type_annotation | filled_type_variable_list
 
 %import common.WS
@@ -134,18 +135,55 @@ def handle_class_tree(
 def handle_subscription_tree(
     subscription_tree: Tree
 ) -> TypeInferenceResult:
-    # subscription: class "[" type_annotation ("," type_annotation)* "]"
+    # subscription: class filled_type_variable_list
     class_tree: Tree = subscription_tree.children[0]
     type_inference_class: TypeInferenceClass = handle_class_tree(
         class_tree
     )
-    filled_type_variable_list: list[TypeInferenceResult] = [
-        handle_type_annotation_tree(
-            type_annotation_tree
+    filled_type_variable_list_tree: Tree = subscription_tree.children[1]
+    filled_type_variable_list: tuple[TypeInferenceResult, ...] = tuple(handle_filled_type_variable_list_tree(
+        filled_type_variable_list_tree
+    ))
+
+    return TypeInferenceResult(type_inference_class, filled_type_variable_list)
+
+
+def handle_filled_type_variable_list_tree(
+    filled_type_variable_list_tree: Tree
+) -> typing.Generator[
+    TypeInferenceResult,
+    None,
+    None
+]:
+    # filled_type_variable_list: "[" filled_type_variable_list_element? ("," filled_type_variable_list_element)* "]"
+    filled_type_variable_list_element_tree_list: list[Tree] = filled_type_variable_list_tree.children
+    if len(filled_type_variable_list_element_tree_list) == 0:
+        return
+    else:
+        for filled_type_variable_list_element_tree in filled_type_variable_list_element_tree_list:
+            yield from handle_filled_type_variable_list_element_tree(
+                filled_type_variable_list_element_tree
+            )
+
+
+def handle_filled_type_variable_list_element_tree(
+    filled_type_variable_list_element_tree: Tree
+) -> typing.Generator[
+    TypeInferenceResult,
+    None,
+    None
+]:
+    # filled_type_variable_list_element: type_annotation | filled_type_variable_list
+    type_annotation_or_filled_type_variable_list_tree = filled_type_variable_list_element_tree.children[0]
+    rule: str = type_annotation_or_filled_type_variable_list_tree.data.value
+    if rule == 'type_annotation':
+        yield handle_type_annotation_tree(
+            type_annotation_or_filled_type_variable_list_tree
         )
-        for type_annotation_tree in subscription_tree.find_data('type_annotation')
-    ]
-    return TypeInferenceResult(type_inference_class, tuple(filled_type_variable_list))
+    elif rule == 'filled_type_variable_list':
+        yield from handle_filled_type_variable_list_tree(
+            type_annotation_or_filled_type_variable_list_tree
+        )
 
 
 def parse(

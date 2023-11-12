@@ -7,12 +7,12 @@ from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, Typeshed
     Subscription, Union
 
 
-def type_ascription(
+async def type_ascription(
         node_set: frozenset[ast.AST],
         type_annotation: TypeshedTypeAnnotation,
-        get_related_nodes_function: typing.Callable[[frozenset[ast.AST], NonEquivalenceRelationTuple], frozenset[ast.AST]],
-        typeshed_type_variable_ascription_callback: typing.Callable[[frozenset[ast.AST], TypeshedTypeVariable, float], None],
-        typeshed_class_ascription_callback: typing.Callable[[frozenset[ast.AST], TypeshedClass, float], None],
+        get_related_nodes_function: typing.Callable[[frozenset[ast.AST], NonEquivalenceRelationType, object], typing.Coroutine[None, None, frozenset[ast.AST]]],
+        typeshed_type_variable_ascription_callback: typing.Callable[[frozenset[ast.AST], TypeshedTypeVariable, float], typing.Coroutine[typing.Any, typing.Any, None]],
+        typeshed_class_ascription_callback: typing.Callable[[frozenset[ast.AST], TypeshedClass, float], typing.Coroutine[typing.Any, typing.Any, None]],
         weight: float = 1.0,
         visited_node_set: frozenset[ast.AST] = frozenset()
 ):
@@ -21,10 +21,11 @@ def type_ascription(
     if not nodes_to_ascribe_to:
         return
     else:
+        logging.info('Performing type ascription: %s <- %s, weight %s', nodes_to_ascribe_to, type_annotation, weight)
         if isinstance(type_annotation, TypeshedTypeVariable):
-            typeshed_type_variable_ascription_callback(nodes_to_ascribe_to, type_annotation, weight)
+            await typeshed_type_variable_ascription_callback(nodes_to_ascribe_to, type_annotation, weight)
         elif isinstance(type_annotation, TypeshedClass):
-            typeshed_class_ascription_callback(nodes_to_ascribe_to, type_annotation, weight)
+            await typeshed_class_ascription_callback(nodes_to_ascribe_to, type_annotation, weight)
         elif isinstance(type_annotation, Subscription):
             new_visited_node_set = visited_node_set | node_set
 
@@ -32,7 +33,7 @@ def type_ascription(
             type_annotation_tuple = type_annotation.type_annotation_tuple
 
             # Ascribe the subscribed class to the node set.
-            typeshed_class_ascription_callback(nodes_to_ascribe_to, type_annotation.subscribed_class, weight)
+            await typeshed_class_ascription_callback(nodes_to_ascribe_to, type_annotation.subscribed_class, weight)
 
             # Handle the type annotation tuple based on the semantics of different subscribed classes.
 
@@ -76,8 +77,8 @@ def type_ascription(
                     TypeshedClass('itertools', 'pairwise')
             ):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -92,8 +93,8 @@ def type_ascription(
                     TypeshedClass('_collections_abc', 'dict_items')
             ):
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         Subscription(
                             TypeshedClass('builtins', 'tuple'),
                             (
@@ -111,8 +112,8 @@ def type_ascription(
             # Ascribe <the second type annotation> to nodes which are IterTargetOf the node set.
             elif subscribed_class == TypeshedClass('_collections_abc', 'dict_values'):
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         type_annotation_tuple[1],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -124,8 +125,8 @@ def type_ascription(
             # Ascribe tuple[int, <the first type annotation>] to nodes which are IterTargetOf the node set.
             elif subscribed_class == TypeshedClass('builtins', 'enumerate'):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         Subscription(
                             TypeshedClass('builtins', 'tuple'),
                             (
@@ -145,8 +146,8 @@ def type_ascription(
                 TypeshedClass('itertools', 'groupby'),
             ):
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         Subscription(
                             TypeshedClass('builtins', 'tuple'),
                             (
@@ -172,8 +173,8 @@ def type_ascription(
                 TypeshedClass('itertools', 'combinations_with_replacement'),
             ):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         Subscription(
                             TypeshedClass('typing', 'Sequence'),
                             (
@@ -194,8 +195,8 @@ def type_ascription(
                     TypeshedClass('_typeshed', 'SupportsItemAccess'),
             ):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.KeyOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.KeyOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -205,8 +206,8 @@ def type_ascription(
                     )
 
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ValueOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ValueOf, None),
                         type_annotation_tuple[1],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -227,8 +228,8 @@ def type_ascription(
                     TypeshedClass('_typeshed', 'SupportsLenAndGetItem')
             ):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)) | get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ValueOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None) | await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ValueOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -237,8 +238,8 @@ def type_ascription(
                         new_visited_node_set
                     )
 
-                type_ascription(
-                    get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.KeyOf,)),
+                await type_ascription(
+                    await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.KeyOf, None),
                     TypeshedClass('builtins', 'int'),
                     get_related_nodes_function,
                     typeshed_type_variable_ascription_callback,
@@ -261,8 +262,8 @@ def type_ascription(
                     TypeshedClass('collections', 'OrderedDict')
             ):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)) | get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.KeyOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None) | await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.KeyOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -272,8 +273,8 @@ def type_ascription(
                     )
 
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ValueOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ValueOf, None),
                         type_annotation_tuple[1],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -286,8 +287,8 @@ def type_ascription(
             # Ascribe int to nodes which are ValueOf the node set.
             elif subscribed_class == TypeshedClass('collections', 'Counter'):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)) | get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.KeyOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None) | await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.KeyOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -296,8 +297,8 @@ def type_ascription(
                         new_visited_node_set
                     )
 
-                type_ascription(
-                    get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ValueOf,)),
+                await type_ascription(
+                    await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ValueOf, None),
                     TypeshedClass('builtins', 'int'),
                     get_related_nodes_function,
                     typeshed_type_variable_ascription_callback,
@@ -309,8 +310,8 @@ def type_ascription(
             # Ascribe <the first type annotation> to nodes which are YieldFromAwaitResultOf the node set.
             elif subscribed_class == TypeshedClass('typing', 'Awaitable'):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.YieldFromAwaitResultOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.YieldFromAwaitResultOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -327,8 +328,8 @@ def type_ascription(
                     TypeshedClass('typing', 'Coroutine')
             ):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -338,8 +339,8 @@ def type_ascription(
                     )
 
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.SendTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.SendTargetOf, None),
                         type_annotation_tuple[1],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -349,8 +350,8 @@ def type_ascription(
                     )
 
                 if len(type_annotation_tuple) >= 3:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.YieldFromAwaitResultOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.YieldFromAwaitResultOf, None),
                         type_annotation_tuple[2],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -363,8 +364,8 @@ def type_ascription(
             # Ascribe <the second type annotation> to nodes which are SendTargetOf the node set.
             elif subscribed_class == TypeshedClass('typing', 'AsyncGenerator'):
                 if len(type_annotation_tuple) >= 1:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.IterTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.IterTargetOf, None),
                         type_annotation_tuple[0],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -374,8 +375,8 @@ def type_ascription(
                     )
 
                 if len(type_annotation_tuple) >= 2:
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.SendTargetOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.SendTargetOf, None),
                         type_annotation_tuple[1],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -388,8 +389,8 @@ def type_ascription(
             # Ascribe int to nodes which are KeyOf the node set.
             elif subscribed_class == TypeshedClass('builtins', 'tuple'):
                 for i, element_type_annotation in enumerate(type_annotation_tuple):
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ElementOf, i)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ElementOf, i),
                         element_type_annotation,
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -398,8 +399,8 @@ def type_ascription(
                         new_visited_node_set
                     )
 
-                type_ascription(
-                    get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.KeyOf,)),
+                await type_ascription(
+                    await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.KeyOf, None),
                     TypeshedClass('builtins', 'int'),
                     get_related_nodes_function,
                     typeshed_type_variable_ascription_callback,
@@ -417,8 +418,8 @@ def type_ascription(
             ):
                 if len(type_annotation_tuple) >= 1:
                     for i, argument_type_annotation in enumerate(type_annotation_tuple[:-1]):
-                        type_ascription(
-                            get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ArgumentOf, i)),
+                        await type_ascription(
+                            await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ArgumentOf, i),
                             argument_type_annotation,
                             get_related_nodes_function,
                             typeshed_type_variable_ascription_callback,
@@ -427,8 +428,8 @@ def type_ascription(
                             new_visited_node_set
                         )
 
-                    type_ascription(
-                        get_related_nodes_function(nodes_to_ascribe_to, (NonEquivalenceRelationType.ReturnedValueOf,)),
+                    await type_ascription(
+                        await get_related_nodes_function(nodes_to_ascribe_to, NonEquivalenceRelationType.ReturnedValueOf, None),
                         type_annotation_tuple[-1],
                         get_related_nodes_function,
                         typeshed_type_variable_ascription_callback,
@@ -440,7 +441,7 @@ def type_ascription(
                 logging.error('Unknown semantics of subscribed class %s!', subscribed_class)
         elif isinstance(type_annotation, Union):
             for type_annotation_in_type_annotation_frozenset in type_annotation.type_annotation_frozenset:
-                type_ascription(
+                await type_ascription(
                     node_set,
                     type_annotation_in_type_annotation_frozenset,
                     get_related_nodes_function,

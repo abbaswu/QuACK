@@ -6,7 +6,10 @@ from collections import defaultdict
 from type_definitions import *
 
 
-def get_top_level_imported_names_to_runtime_objects_mappings(
+module_names_to_imported_names_to_runtime_objects: defaultdict[str, dict[str, object]] = defaultdict(dict)
+
+
+def get_module_names_to_imported_names_to_runtime_objects(
         module_names_to_import_tuple_sets: typing.Mapping[str, typing.Set[tuple[str, str]]],
         module_names_to_import_from_tuple_sets: typing.Mapping[str, typing.Set[tuple[str, str, str]]],
         module_names_to_modules: typing.Mapping[str, Module]
@@ -18,8 +21,6 @@ def get_top_level_imported_names_to_runtime_objects_mappings(
     An import from tuple is a 3-tuple: (import_from_module_name, imported_name, imported_name_alias).
     The mapping from module names to modules come from obtaining `sys.modules` after importing the project's modules.
     """
-    module_names_to_imported_names_to_runtime_objects: defaultdict[str, dict[str, object]] = defaultdict(dict)
-
     for module_name, import_tuple_set in module_names_to_import_tuple_sets.items():
         if module_name in module_names_to_modules:
             module = module_names_to_modules[module_name]
@@ -82,5 +83,3 @@ def get_top_level_imported_names_to_runtime_objects_mappings(
                                       imported_name_alias, module_name)
         else:
             logging.error('Cannot match module %s to a runtime module!', module_name)
-
-    return module_names_to_imported_names_to_runtime_objects

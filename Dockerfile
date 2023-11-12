@@ -39,7 +39,6 @@ RUN conda create --name stray -y python=3.9 \
 RUN conda create --name mypy -y python=3.10 \
     && conda run --name mypy pip install --verbose mypy
 
-COPY quack /root/quack/
 RUN conda create --name quack -y python=3.10 \
     && conda run --name quack pip install --verbose networkx numpy ordered_set pudb scipy typeshed_client
 
@@ -47,9 +46,10 @@ RUN conda create --name quack -y python=3.10 \
 RUN conda run --name base pip install lark ordered_set pudb pandas
 
 # Copy entrypoint and data processing scripts
+COPY quack /root/quack/
 COPY static_import_analysis /root/static_import_analysis/
 COPY *.py *.sh /root/
 
 # command executable and version
-ENTRYPOINT ["/bin/sh", "/root/container_entrypoint_shell_script.sh"]
+ENTRYPOINT ["/bin/bash", "/root/container_entrypoint_shell_script.sh"]
 # ENTRYPOINT ["/bin/bash"]

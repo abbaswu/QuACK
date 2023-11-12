@@ -18,10 +18,10 @@ import static_import_analysis
 from build_ast_node_namespace_trie import build_ast_node_namespace_trie, get_node_to_name_component_tuple_dict
 from disjoint_set import DisjointSet
 
-from get_definitions_to_runtime_terms_mappings import get_definitions_to_runtime_terms_mappings
-from get_top_level_imported_names_to_runtime_objects_mappings import get_top_level_imported_names_to_runtime_objects_mappings
+from definitions_to_runtime_terms_mappings import get_definitions_to_runtime_terms_mappings
+from module_names_to_imported_names_to_runtime_objects import get_module_names_to_imported_names_to_runtime_objects
 
-from collect_preliminary_typing_constraints import collect_preliminary_typing_constraints
+from collect_preliminary_typing_constraints import collect_and_resolve_typing_constraints
 from relations import NonEquivalenceRelationGraph
 from resolve_typing_constraints import resolve_typing_constraints
 from runtime_term import RuntimeTerm
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         module_node_list
     )
 
-    module_names_to_imported_names_to_runtime_objects = get_top_level_imported_names_to_runtime_objects_mappings(
+    module_names_to_imported_names_to_runtime_objects = get_module_names_to_imported_names_to_runtime_objects(
         module_name_to_import_tuple_set_dict,
         module_name_to_import_from_tuple_set_dict,
         sys.modules
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         nodes_providing_scope_to_send_value_sets,
         equivalence_relation_graph,
         other_relations_graph
-    ) = collect_preliminary_typing_constraints(
+    ) = collect_and_resolve_typing_constraints(
         top_level_class_definitions_to_runtime_classes,
         unwrapped_runtime_functions_to_named_function_definitions,
         module_names_to_imported_names_to_runtime_objects,

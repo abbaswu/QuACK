@@ -1,14 +1,30 @@
+import logging
 import typing
 
+from get_attributes_in_runtime_class import get_attributes_in_runtime_class
 from relations import NonEquivalenceRelationType, NonEquivalenceRelationTuple
 from runtime_term import Instance, UnboundMethod, BoundMethod, RuntimeTerm
 from type_definitions import Module, RuntimeClass, Function
+
 
 AttributeAccessPropagationRuntimeTerm = typing.Union[
     Module,
     RuntimeClass,
     Instance
 ]
+
+
+def get_attributes_in_attribute_access_propagation_runtime_term(
+        attribute_access_propagation_runtime_term: AttributeAccessPropagationRuntimeTerm
+) -> set[str]:
+    if isinstance(attribute_access_propagation_runtime_term, Module):
+        return set(attribute_access_propagation_runtime_term.__dict__.keys())
+    elif isinstance(attribute_access_propagation_runtime_term, RuntimeClass):
+        return get_attributes_in_runtime_class(attribute_access_propagation_runtime_term)
+    elif isinstance(attribute_access_propagation_runtime_term, Instance):
+        return get_attributes_in_runtime_class(attribute_access_propagation_runtime_term.class_)
+    else:
+        raise TypeError(f'Unexpected type of attribute_access_propagation_runtime_term: {type(attribute_access_propagation_runtime_term)}')
 
 
 class AttributeAccessPropagationTask:
@@ -44,6 +60,9 @@ class AttributeAccessPropagationTask:
         if not isinstance(other, AttributeAccessPropagationTask):
             return False
         return (self.runtime_term, self.attribute_name) == (other.runtime_term, other.attribute_name)
+
+    def __repr__(self):
+        return f'AttributeAccessPropagationTask({self.runtime_term}, {self.attribute_name})'
 
 
 FunctionCallPropagationRuntimeTerm = typing.Union[
@@ -87,6 +106,9 @@ class FunctionCallPropagationTask:
             return False
         return self.runtime_term == other.runtime_term
 
+    def __repr__(self):
+        return f'FunctionCallPropagationTask({self.runtime_term})'
+
 
 PropagationTask = typing.Union[
     AttributeAccessPropagationTask,
@@ -94,44 +116,27 @@ PropagationTask = typing.Union[
 ]
 
 
-def can_relation_tuple_induce_propagation_task(
-        relation_tuple: NonEquivalenceRelationTuple,
-        relation_tuple_induces_function_call_propagation_callback: typing.Callable[[], None],
-        relation_tuple_induces_attribute_access_propagation_callback: typing.Callable[[str], None]
-):
-    relation_type, *parameters = relation_tuple
-    if relation_type == NonEquivalenceRelationType.AttrOf:
-        attribute_name: str = parameters[0]
-        relation_tuple_induces_attribute_access_propagation_callback(attribute_name)
-    elif relation_type in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf):
-        relation_tuple_induces_function_call_propagation_callback()
-
-
-def generate_propagation_tasks_induced_by_runtime_terms_and_relation_tuples(
+def generate_propagation_tasks(
         runtime_terms: typing.Iterable[RuntimeTerm],
-        relation_tuples: typing.Iterable[NonEquivalenceRelationTuple]
+        relation_types_and_parameters: typing.Iterable[tuple[NonEquivalenceRelationType, typing.Optional[object]]]
 ) -> typing.Iterator[PropagationTask]:
     function_call_induced: bool = False
     accessed_attribute_name_set: set[str] = set()
 
-    def relation_tuple_induces_function_call_propagation_callback():
-        nonlocal function_call_induced
-        function_call_induced = True
-
-    def relation_tuple_induces_attribute_access_propagation_callback(attribute_name: str):
-        nonlocal accessed_attribute_name_set
-        accessed_attribute_name_set.add(attribute_name)
-
-    for relation_tuple in relation_tuples:
-        can_relation_tuple_induce_propagation_task(
-            relation_tuple,
-            relation_tuple_induces_function_call_propagation_callback,
-            relation_tuple_induces_attribute_access_propagation_callback
-        )
+    for relation_type, parameter in relation_types_and_parameters:
+        if relation_type == NonEquivalenceRelationType.AttrOf:
+            assert isinstance(parameter, str)
+            accessed_attribute_name_set.add(parameter)
+        elif relation_type in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf):
+            function_call_induced = True
 
     for runtime_term in runtime_terms:
         if isinstance(runtime_term, FunctionCallPropagationRuntimeTerm) and function_call_induced:
+            logging.info('Function call propagation induced by %s', runtime_term)
             yield FunctionCallPropagationTask(runtime_term)
         if isinstance(runtime_term, AttributeAccessPropagationRuntimeTerm) and accessed_attribute_name_set:
-            for attribute_name in accessed_attribute_name_set:
+            for attribute_name in accessed_attribute_name_set & get_attributes_in_attribute_access_propagation_runtime_term(
+                    runtime_term
+            ):
+                logging.info('%s-attribute access propagation induced by %s', attribute_name, runtime_term)
                 yield AttributeAccessPropagationTask(runtime_term, attribute_name)

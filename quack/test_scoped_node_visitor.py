@@ -1,6 +1,7 @@
 import ast
+import asyncio
 
-from scoped_node_visitor import ScopedNodeVisitor, NodeProvidingScope
+from node_visitor import ScopedNodeVisitor, NodeProvidingScope, AsyncEvaluationOrderBottomUpNodeVisitor
 
 if __name__ == '__main__':
     import shell_sort.shell_sort
@@ -12,3 +13,10 @@ if __name__ == '__main__':
         print(scope, classes, ast.unparse(node))
 
     ScopedNodeVisitor(callback).visit(node)
+
+    # async def callback(node: ast.AST):
+    #     print(ast.unparse(node))
+    #
+    # asyncio.run(
+    #     AsyncEvaluationOrderBottomUpNodeVisitor(callback).visit(node)
+    # )

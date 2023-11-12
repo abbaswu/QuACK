@@ -16,6 +16,7 @@ def run_type_inference_method_and_postprocess_results(
     method: str,
     query_dict: QueryDict,
     module_search_path: str,
+    module_prefix: str,
     module_name_to_class_name_to_method_name_to_parameter_name_list_dict: dict[str, dict[str, dict[str, list[str]]]],
     module_name_to_import_from_tuple_set_dict: dict[str, set[tuple[str, str, str]]]
 ) -> ResultDict:
@@ -26,7 +27,7 @@ def run_type_inference_method_and_postprocess_results(
         
         result = subprocess.run(
             [
-                'sh',
+                'bash',
                 'run_type_inference_method.sh',
                 '-m',
                 method,
@@ -35,7 +36,9 @@ def run_type_inference_method_and_postprocess_results(
                 '-s',
                 module_search_path,
                 '-o',
-                temporary_file_path
+                temporary_file_path,
+                '-p',
+                module_prefix
             ]
         )
 

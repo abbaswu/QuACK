@@ -10,7 +10,7 @@ import sys
 
 import static_import_analysis
 
-from get_top_level_imported_names_to_runtime_objects_mappings import get_top_level_imported_names_to_runtime_objects_mappings
+from module_names_to_imported_names_to_runtime_objects import get_module_names_to_imported_names_to_runtime_objects
 
 
 if __name__ == '__main__':
@@ -30,7 +30,7 @@ if __name__ == '__main__':
         for module_name, file_path in module_name_to_file_path_dict.items()
     }
 
-    module_names_to_imported_names_to_runtime_objects = get_top_level_imported_names_to_runtime_objects_mappings(
+    module_names_to_imported_names_to_runtime_objects = get_module_names_to_imported_names_to_runtime_objects(
         module_name_to_import_tuple_set_dict,
         module_name_to_import_from_tuple_set_dict,
         module_name_to_module

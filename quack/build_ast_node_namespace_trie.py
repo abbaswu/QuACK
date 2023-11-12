@@ -7,88 +7,118 @@ Nodes that access names:
 - ast.ExceptHandler
 - ast.Name
 """
+import _ast
 import ast
 import typing
 
+from node_visitor import get_child_nodes
+from parameter_lists_and_symbolic_return_values import nodes_to_parameter_lists_and_symbolic_return_values
 from trie import TrieNode
 
 
-class ModuleLevelASTNodeNamespaceTrieBuilder(ast.NodeVisitor):
+def add_node_that_accesses_name(
+        namespace_defining_trie_node: TrieNode[str, dict[str, set[ast.AST]]],
+        node: ast.AST,
+        name: str
+):
+    if namespace_defining_trie_node.value is None:
+        namespace_defining_trie_node.value = dict()
+
+    if name not in namespace_defining_trie_node.value:
+        namespace_defining_trie_node.value[name] = set()
+
+    namespace_defining_trie_node.value[name].add(node)
+
+
+class ModuleLevelASTNodeNamespaceTrieBuilder:
     def __init__(self, root: TrieNode[str, dict[str, set[ast.AST]]], module_name: str):
         self.namespace_defining_trie_node_stack: list[TrieNode[str, dict[str, set[ast.AST]]]] = [root]
         self.module_name = module_name
 
-    def handle_node_that_accesses_name(self, node: ast.AST, name: str, defines_namespace: bool = False):
+    def visit(self, node: _ast.AST):
         current_namespace_defining_trie_node = self.namespace_defining_trie_node_stack[-1]
 
-        if current_namespace_defining_trie_node.value is None:
-            current_namespace_defining_trie_node.value = dict()
+        # ast.Module(body, type_ignores)
+        if isinstance(node, ast.Module):
+            add_node_that_accesses_name(
+                current_namespace_defining_trie_node,
+                node,
+                self.module_name,
+            )
 
-        if name not in current_namespace_defining_trie_node.value:
-            current_namespace_defining_trie_node.value[name] = set()
+            new_namespace_defining_trie_node: TrieNode[str, dict[str, set[ast.AST]]] = TrieNode()
+            current_namespace_defining_trie_node.children[self.module_name] = new_namespace_defining_trie_node
+            self.namespace_defining_trie_node_stack.append(new_namespace_defining_trie_node)
 
-        current_namespace_defining_trie_node.value[name].add(node)
+            for child_node in get_child_nodes(node):
+                self.visit(child_node)
 
-        if defines_namespace:
-            namespace_root: TrieNode[str, dict[str, set[ast.AST]]] = TrieNode()
-            current_namespace_defining_trie_node.children[name] = namespace_root
-            self.namespace_defining_trie_node_stack.append(namespace_root)
+            self.namespace_defining_trie_node_stack.pop()
+        # ast.ClassDef(name, bases, keywords, body, decorator_list)
+        elif isinstance(node, ast.ClassDef):
+            add_node_that_accesses_name(
+                current_namespace_defining_trie_node,
+                node,
+                node.name,
+            )
 
-            self.generic_visit(node)
+            new_namespace_defining_trie_node: TrieNode[str, dict[str, set[ast.AST]]] = TrieNode()
+            current_namespace_defining_trie_node.children[node.name] = new_namespace_defining_trie_node
+            self.namespace_defining_trie_node_stack.append(new_namespace_defining_trie_node)
+
+            for child_node in get_child_nodes(node):
+                self.visit(child_node)
+
+            self.namespace_defining_trie_node_stack.pop()
+        # ast.FunctionDef(name, args, body, decorator_list, returns, type_comment)
+        # ast.AsyncFunctionDef(name, args, body, decorator_list, returns, type_comment)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            add_node_that_accesses_name(
+                current_namespace_defining_trie_node,
+                node,
+                node.name,
+            )
+
+            new_namespace_defining_trie_node: TrieNode[str, dict[str, set[ast.AST]]] = TrieNode()
+            current_namespace_defining_trie_node.children[node.name] = new_namespace_defining_trie_node
+            self.namespace_defining_trie_node_stack.append(new_namespace_defining_trie_node)
+
+            # Add parameters and return value to namespace.
+            if node in nodes_to_parameter_lists_and_symbolic_return_values:
+                parameter_list, symbolic_return_value = nodes_to_parameter_lists_and_symbolic_return_values[node]
+                for parameter in parameter_list:
+                    add_node_that_accesses_name(
+                        new_namespace_defining_trie_node,
+                        parameter,
+                        parameter.arg,
+                    )
+                add_node_that_accesses_name(
+                    new_namespace_defining_trie_node,
+                    symbolic_return_value,
+                    'return',
+                )
+
+            for child_node in get_child_nodes(node):
+                self.visit(child_node)
 
             self.namespace_defining_trie_node_stack.pop()
         else:
-            self.generic_visit(node)
+            if isinstance(node, ast.ExceptHandler):
+                if node.name is not None:
+                    add_node_that_accesses_name(
+                        current_namespace_defining_trie_node,
+                        node,
+                        node.name,
+                    )
+            elif isinstance(node, ast.Name):
+                add_node_that_accesses_name(
+                    current_namespace_defining_trie_node,
+                    node,
+                    node.id,
+                )
 
-    def visit_Module(self, node: ast.Module):
-        self.handle_node_that_accesses_name(
-            node,
-            self.module_name,
-            True
-        )
-
-    def visit_ClassDef(self, node: ast.ClassDef):
-        self.handle_node_that_accesses_name(
-            node,
-            node.name,
-            True
-        )
-
-    def visit_FunctionDef(self, node: ast.FunctionDef):
-        self.handle_node_that_accesses_name(
-            node,
-            node.name,
-            True
-        )
-
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        self.handle_node_that_accesses_name(
-            node,
-            node.name,
-            True
-        )
-
-    def visit_arg(self, node: ast.arg):
-        self.handle_node_that_accesses_name(
-            node,
-            node.arg,
-            False
-        )
-
-    def visit_ExceptHandler(self, node: ast.ExceptHandler):
-        if node.name is not None:
-            self.handle_node_that_accesses_name(
-                node,
-                node.name,
-                False
-            )
-
-    def visit_Name(self, node: ast.Name):
-        self.handle_node_that_accesses_name(
-            node,
-            node.id,
-            False
-        )
+            for child_node in get_child_nodes(node):
+                self.visit(child_node)
 
 
 def build_ast_node_namespace_trie(

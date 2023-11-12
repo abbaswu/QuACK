@@ -126,7 +126,10 @@ def generate_query_dict(
             class_level_query_dict: ClassLevelQueryDict = dict()
 
             for method_name, parameter_name_list in method_name_to_parameter_name_list_dict.items():
-                class_level_query_dict[method_name] = parameter_name_list.copy()
+                if parameter_name_list and parameter_name_list[0] in ('self', 'cls'):
+                    class_level_query_dict[method_name] = parameter_name_list[1:].copy()
+                else:
+                    class_level_query_dict[method_name] = parameter_name_list.copy()
                 class_level_query_dict[method_name].append('return')
 
             if class_level_query_dict:

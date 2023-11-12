@@ -41,7 +41,7 @@ def run_mypy_and_parse_output(
 ) -> pd.DataFrame:
     result = subprocess.run(
         [
-            'sh',
+            'bash',
             'run_mypy.sh',
             '-s',
             module_search_path,
