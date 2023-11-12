@@ -46,7 +46,8 @@ nodes_to_propagation_task_sets_lock: asyncio.Lock = asyncio.Lock()
 
 node_disjoint_set: DisjointSet[_ast.AST] = DisjointSet()
 equivalent_set_top_node_non_equivalence_relation_graph: NonEquivalenceRelationGraph = NonEquivalenceRelationGraph()
-equivalent_set_top_nodes_to_runtime_term_sets: defaultdict[_ast.AST, set[RuntimeTerm]] = defaultdict(set)
+runtime_term_sharing_node_disjoint_set: DisjointSet[_ast.AST] = DisjointSet()
+runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets: defaultdict[_ast.AST, set[RuntimeTerm]] = defaultdict(set)
 node_disjoint_set_lock: asyncio.Lock = asyncio.Lock()
 
 node_non_equivalence_relation_graph: NonEquivalenceRelationGraph = NonEquivalenceRelationGraph()
@@ -161,9 +162,9 @@ async def add_relation(
             )
         else:
             induced_equivalent_set = set()
-    #
-    # if relation_type not in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf) and induced_equivalent_set:
-    #     await set_equivalent(induced_equivalent_set)
+
+    if relation_type not in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf) and induced_equivalent_set:
+        await set_equivalent(induced_equivalent_set, propagate_runtime_terms=False)
 
 
 async def add_argument_of_returned_value_of_relations(
@@ -204,7 +205,6 @@ async def add_argument_of_returned_value_of_relations(
             await add_propagation_task(called_function_node, propagation_task)
 
     # Add relation in node_non_equivalence_relation_graph
-    # Get induced equivalent set
     async with node_disjoint_set_lock:
         called_function_node_equivalent_set_top_node = node_disjoint_set.find(called_function_node)
 
@@ -267,34 +267,35 @@ async def add_runtime_terms(
         to_node: ast.AST,
         runtime_term_set: typing.AbstractSet[RuntimeTerm]
 ):
-    # Add runtime terms to other nodes in the equivalent set
+    # Add runtime terms to other nodes in the runtime term sharing equivalent set
     async with node_disjoint_set_lock:
-        equivalent_set_top_node = node_disjoint_set.find(to_node)
+        runtime_term_sharing_equivalent_set_top_node = runtime_term_sharing_node_disjoint_set.find(to_node)
 
-        runtime_terms_to_add = runtime_term_set - equivalent_set_top_nodes_to_runtime_term_sets[equivalent_set_top_node]
-        equivalent_set_top_nodes_to_runtime_term_sets[equivalent_set_top_node].update(runtime_terms_to_add)
+        runtime_terms_to_add = runtime_term_set - runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[runtime_term_sharing_equivalent_set_top_node]
+        runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[runtime_term_sharing_equivalent_set_top_node].update(runtime_terms_to_add)
 
-        all_nodes_in_equivalent_set = node_disjoint_set.get_containing_set(equivalent_set_top_node)
+        all_nodes_in_runtime_term_sharing_equivalent_set = runtime_term_sharing_node_disjoint_set.get_containing_set(to_node)
 
     if runtime_terms_to_add:
         propagation_tasks = []
 
-        for node_in_equivalent_set in all_nodes_in_equivalent_set:
+        for node_in_runtime_term_sharing_equivalent_set in all_nodes_in_runtime_term_sharing_equivalent_set:
             async with nodes_to_runtime_term_sets_lock, node_non_equivalence_relation_graph_lock:
-                nodes_to_runtime_term_sets[node_in_equivalent_set].update(runtime_terms_to_add)
+                nodes_to_runtime_term_sets[node_in_runtime_term_sharing_equivalent_set].update(runtime_terms_to_add)
 
                 relation_types_and_parameters = list(
-                    node_non_equivalence_relation_graph.get_all_relation_types_and_parameters(node_in_equivalent_set)
+                    node_non_equivalence_relation_graph.get_all_relation_types_and_parameters(node_in_runtime_term_sharing_equivalent_set)
                 )
 
                 for propagation_task in generate_propagation_tasks(
                         runtime_terms_to_add,
                         relation_types_and_parameters
                 ):
-                    propagation_tasks.append((node_in_equivalent_set, propagation_task))
+                    propagation_tasks.append((node_in_runtime_term_sharing_equivalent_set, propagation_task))
 
-        for node_in_equivalent_set, propagation_task in propagation_tasks:
-            await add_propagation_task(node_in_equivalent_set, propagation_task)
+        for node_in_runtime_term_sharing_equivalent_set, propagation_task in propagation_tasks:
+            await add_propagation_task(node_in_runtime_term_sharing_equivalent_set, propagation_task)
+
 
 async def add_propagation_task(
         node: _ast.AST,
@@ -485,14 +486,13 @@ async def handle_function_call_propagation_task(
 
             (
                 parameter_list,
-                _
+                symbolic_return_value
             ) = nodes_to_parameter_lists_and_symbolic_return_values[
                 named_function_definition
             ]
 
-            # for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
-            #     for argument_node in argument_node_set:
-            #         handle_matching_parameter_with_argument(parameter_node, argument_node)
+            for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
+                await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
         else:
             # Typeshed has stubs
             try:
@@ -643,17 +643,15 @@ async def handle_function_call_propagation_task(
         elif isinstance(runtime_term, FunctionDefinition):
             (
                 parameter_list,
-                _
+                symbolic_return_value
             ) = nodes_to_parameter_lists_and_symbolic_return_values[
                 runtime_term
             ]
 
-            # for parameter_node, argument_node_set in zip(parameter_list, apparent_argument_node_set_list):
-            #     for argument_node in argument_node_set:
-            #         handle_matching_parameter_with_argument(parameter_node, argument_node)
-            # for return_value_node in return_value_set:
-            #     for returned_value_node in returned_value_node_set:
-            #         handle_matching_return_value_with_returned_value(return_value_node, returned_value_node)
+            for parameter_node, argument_node_set in zip(parameter_list, apparent_argument_node_set_list):
+                await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+
+            await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
         else:
             logging.error('Cannot handle function %s!', runtime_term)
     elif isinstance(runtime_term, UnboundMethod):
@@ -685,18 +683,15 @@ async def handle_function_call_propagation_task(
         elif isinstance(runtime_term.function, FunctionDefinition):
             (
                 parameter_list,
-                _
+                symbolic_return_value
             ) = nodes_to_parameter_lists_and_symbolic_return_values[
                 runtime_term.function
             ]
 
-            # for parameter_node, argument_node_set in zip(parameter_list, apparent_argument_node_set_list):
-            #     for argument_node in argument_node_set:
-            #         handle_matching_parameter_with_argument(parameter_node, argument_node)
-            #
-            # for return_value_node in return_value_set:
-            #     for returned_value_node in returned_value_node_set:
-            #         handle_matching_return_value_with_returned_value(return_value_node, returned_value_node)
+            for parameter_node, argument_node_set in zip(parameter_list, apparent_argument_node_set_list):
+                await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+
+            await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
         else:
             logging.error('Cannot handle UnboundMethod %s!', runtime_term)
     elif isinstance(runtime_term, Instance):
@@ -709,19 +704,16 @@ async def handle_function_call_propagation_task(
 
                 (
                     parameter_list,
-                    return_value_set
+                    symbolic_return_value
                 ) = nodes_to_parameter_lists_and_symbolic_return_values[
                     named_function_definition
                 ]
 
-                # if parameter_list:
-                #     for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
-                #         for argument_node in argument_node_set:
-                #             handle_matching_parameter_with_argument(parameter_node, argument_node)
-                #
-                # for return_value_node in return_value_set:
-                #     for returned_value_node in returned_value_node_set:
-                #         handle_matching_return_value_with_returned_value(return_value_node, returned_value_node)
+                if parameter_list:
+                    for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
+                        await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+
+                await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
             else:
                 # Typeshed has stubs
                 try:
@@ -808,19 +800,16 @@ async def handle_function_call_propagation_task(
         elif isinstance(runtime_term.function, FunctionDefinition):
             (
                 parameter_list,
-                return_value_set
+                symbolic_return_value
             ) = nodes_to_parameter_lists_and_symbolic_return_values[
                 runtime_term.function
             ]
 
-            # if parameter_list:
-            #     for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
-            #         for argument_node in argument_node_set:
-            #             handle_matching_parameter_with_argument(parameter_node, argument_node)
-            #
-            # for return_value_node in return_value_set:
-            #     for returned_value_node in returned_value_node_set:
-            #         handle_matching_return_value_with_returned_value(return_value_node, returned_value_node)
+            if parameter_list:
+                for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
+                    await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+
+            await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
         else:
             logging.error('Cannot handle BoundMethod %s!', runtime_term)
 
@@ -907,26 +896,29 @@ async def type_ascription_on_function_call(
     )
 
 
-# async def handle_matching_parameter_with_argument(
-#         parameter_node: ast.AST,
-#         argument_node: ast.AST
-# ):
-#     # Contravariance
-#     # The argument node should be a subtype of the parameter node.
-#     # i.e., merge the attribute set of the parameter node into that of the argument node.
-#     node_attribute_containment_graph.add_edge(parameter_node, argument_node)
-#
-# async def handle_matching_return_value_with_returned_value(
-#         return_value_node: ast.AST,
-#         returned_value_node: ast.AST
-# ):
-#     # Covariance
-#     # The returned value node should be a subtype of the return value node.
-#     # i.e., merge the attribute set of the returned value node into that of the return value node.
-#     node_attribute_containment_graph.add_edge(returned_value_node, return_value_node)
+async def handle_matching_parameter_with_argument(
+        parameter_node: _ast.AST,
+        argument_node_set: set[_ast.AST]
+):
+    # Contravariance
+    # The argument node should be a subtype of the parameter node.
+    # i.e., merge the attribute set of the parameter node into that of the argument node.
+    await set_equivalent({parameter_node} | argument_node_set, propagate_runtime_terms=False)
+    # node_attribute_containment_graph.add_edge(parameter_node, argument_node)
 
 
-async def set_equivalent(node_set: typing.AbstractSet[_ast.AST]):
+async def handle_matching_return_value_with_returned_value(
+        return_value_node: _ast.AST,
+        returned_value_node_set: set[_ast.AST]
+):
+    # Covariance
+    # The returned value node should be a subtype of the return value node.
+    # i.e., merge the attribute set of the returned value node into that of the return value node.
+    await set_equivalent({return_value_node} | returned_value_node_set, propagate_runtime_terms=False)
+    # node_attribute_containment_graph.add_edge(returned_value_node, return_value_node)
+
+
+async def set_equivalent(node_set: typing.AbstractSet[_ast.AST], propagate_runtime_terms: bool = False):
     pairwise_queue: collections.deque[tuple[_ast.AST, _ast.AST]] = collections.deque()
     for first_node, second_node in itertools.pairwise(node_set):
         pairwise_queue.append((first_node, second_node))
@@ -935,31 +927,32 @@ async def set_equivalent(node_set: typing.AbstractSet[_ast.AST]):
         first_node, second_node = pairwise_queue.popleft()
 
         union_happened: bool = False
-
         target_equivalent_set_top_node: typing.Optional[_ast.AST] = None
-        target_equivalent_set: typing.Optional[set[_ast.AST]] = None
         acquirer_equivalent_set_top_node: typing.Optional[_ast.AST] = None
-        acquirer_equivalent_set: typing.Optional[set[_ast.AST]] = None
 
-        target_equivalent_set_runtime_term_set_delta: typing.Optional[set[RuntimeTerm]] = None
-        acquirer_equivalent_set_runtime_term_set_delta: typing.Optional[set[RuntimeTerm]] = None
+        runtime_term_sharing_node_disjoint_set_union_happened: bool = False
+        runtime_term_sharing_target_equivalent_set_top_node: typing.Optional[_ast.AST] = None
+        runtime_term_sharing_target_equivalent_set: set[_ast.AST] = set()
+        runtime_term_sharing_acquirer_equivalent_set_top_node: typing.Optional[_ast.AST] = None
+        runtime_term_sharing_acquirer_equivalent_set: set[_ast.AST] = set()
 
         induced_equivalent_node_set_list: list[set[_ast.AST]] = []
 
+        runtime_term_sharing_target_equivalent_set_runtime_term_set_delta: set[RuntimeTerm] = set()
+        runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta: set[RuntimeTerm] = set()
+
         async with node_disjoint_set_lock:
-            # Merge equivalent sets, equivalent set top node runtime term sets and non-equivalence relations.
+            # Merge equivalent sets and non-equivalence relations.
             def union_callback(
                     top_element_of_equivalent_set_containing_first_element: _ast.AST,
                     equivalent_set_containing_first_element: set[_ast.AST],
                     top_element_of_equivalent_set_containing_second_element: _ast.AST,
                     equivalent_set_containing_second_element: set[_ast.AST]
             ):
-                nonlocal union_happened, target_equivalent_set_top_node, target_equivalent_set, acquirer_equivalent_set_top_node, acquirer_equivalent_set
+                nonlocal union_happened, target_equivalent_set_top_node, acquirer_equivalent_set_top_node
                 union_happened = True
                 target_equivalent_set_top_node = top_element_of_equivalent_set_containing_first_element
-                target_equivalent_set = equivalent_set_containing_first_element.copy()
                 acquirer_equivalent_set_top_node = top_element_of_equivalent_set_containing_second_element
-                acquirer_equivalent_set = equivalent_set_containing_second_element.copy()
 
             node_disjoint_set.union(
                 first_node,
@@ -968,35 +961,76 @@ async def set_equivalent(node_set: typing.AbstractSet[_ast.AST]):
             )
 
             if union_happened:
-                # Runtime term sets
-                target_equivalent_set_runtime_term_set = equivalent_set_top_nodes_to_runtime_term_sets[target_equivalent_set_top_node]
-                acquirer_equivalent_set_runtime_term_set = equivalent_set_top_nodes_to_runtime_term_sets[acquirer_equivalent_set_top_node]
-
-                target_equivalent_set_runtime_term_set_delta = acquirer_equivalent_set_runtime_term_set - target_equivalent_set_runtime_term_set
-                acquirer_equivalent_set_runtime_term_set_delta = target_equivalent_set_runtime_term_set - acquirer_equivalent_set_runtime_term_set
-
-                del equivalent_set_top_nodes_to_runtime_term_sets[target_equivalent_set_top_node]
-                acquirer_equivalent_set_runtime_term_set.update(acquirer_equivalent_set_runtime_term_set_delta)
-
                 # Non-equivalence relations, induce equivalent node sets
-                node_relation_type_parameter_triple_set = equivalent_set_top_node_non_equivalence_relation_graph.merge_nodes(target_equivalent_set_top_node, acquirer_equivalent_set_top_node)
-                for node, relation_type, parameter in node_relation_type_parameter_triple_set:
-                    if relation_type not in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf):
+                for (
+                        node,
+                        relation_type,
+                        parameter
+                ) in equivalent_set_top_node_non_equivalence_relation_graph.merge_nodes(
+                    target_equivalent_set_top_node,
+                    acquirer_equivalent_set_top_node
+                ):
+                    if relation_type not in (
+                            NonEquivalenceRelationType.ArgumentOf,
+                            NonEquivalenceRelationType.ReturnedValueOf
+                    ):
                         induced_equivalent_node_set_list.append(
-                            equivalent_set_top_node_non_equivalence_relation_graph.get_out_nodes_with_relation_type_and_parameter(node, relation_type, parameter)
+                            equivalent_set_top_node_non_equivalence_relation_graph.get_out_nodes_with_relation_type_and_parameter(
+                                node, relation_type, parameter
+                            )
                         )
 
-        if union_happened:
-            # Propagate runtime terms
-            for target_equivalent_set_node in target_equivalent_set:
-                await add_runtime_terms_to_node_only(target_equivalent_set_node,
-                                                     target_equivalent_set_runtime_term_set_delta)
+            # Merge runtime term sharing sets.
+            if propagate_runtime_terms:
+                def runtime_term_sharing_union_callback(
+                        top_element_of_runtime_term_sharing_equivalent_set_containing_first_element: _ast.AST,
+                        runtime_term_sharing_equivalent_set_containing_first_element: set[_ast.AST],
+                        top_element_of_runtime_term_sharing_equivalent_set_containing_second_element: _ast.AST,
+                        runtime_term_sharing_equivalent_set_containing_second_element: set[_ast.AST]
+                ):
+                    nonlocal runtime_term_sharing_node_disjoint_set_union_happened, runtime_term_sharing_target_equivalent_set_top_node, runtime_term_sharing_target_equivalent_set, runtime_term_sharing_acquirer_equivalent_set_top_node, runtime_term_sharing_acquirer_equivalent_set
 
-            for acquirer_equivalent_set_node in acquirer_equivalent_set:
-                await add_runtime_terms_to_node_only(acquirer_equivalent_set_node,
-                                                     acquirer_equivalent_set_runtime_term_set_delta)
+                    runtime_term_sharing_node_disjoint_set_union_happened = True
+                    runtime_term_sharing_target_equivalent_set_top_node = top_element_of_runtime_term_sharing_equivalent_set_containing_first_element
+                    runtime_term_sharing_target_equivalent_set = runtime_term_sharing_equivalent_set_containing_first_element.copy()
+                    runtime_term_sharing_acquirer_equivalent_set_top_node = top_element_of_runtime_term_sharing_equivalent_set_containing_second_element
+                    runtime_term_sharing_acquirer_equivalent_set = runtime_term_sharing_equivalent_set_containing_second_element.copy()
 
-            # Propagate induced equivalent node sets
-            # for induced_equivalence_node_set in induced_equivalent_node_set_list:
-            #     await set_equivalent(induced_equivalence_node_set)
-    
+                runtime_term_sharing_node_disjoint_set.union(
+                    first_node,
+                    second_node,
+                    runtime_term_sharing_union_callback
+                )
+
+                if runtime_term_sharing_node_disjoint_set_union_happened:
+                    # Runtime term sets
+                    runtime_term_sharing_target_equivalent_set_runtime_term_set = runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                        runtime_term_sharing_target_equivalent_set_top_node
+                    ]
+                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set = runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                        runtime_term_sharing_acquirer_equivalent_set_top_node
+                    ]
+
+                    runtime_term_sharing_target_equivalent_set_runtime_term_set_delta = runtime_term_sharing_acquirer_equivalent_set_runtime_term_set - runtime_term_sharing_target_equivalent_set_runtime_term_set
+                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta = runtime_term_sharing_target_equivalent_set_runtime_term_set - runtime_term_sharing_acquirer_equivalent_set_runtime_term_set
+
+                    del runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[runtime_term_sharing_target_equivalent_set_top_node]
+                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set.update(runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta)
+
+        # Propagate induced equivalent node sets
+        for induced_equivalence_node_set in induced_equivalent_node_set_list:
+            await set_equivalent(induced_equivalence_node_set, propagate_runtime_terms=False)
+
+        # Propagate runtime terms
+        if propagate_runtime_terms:
+            for runtime_term_sharing_target_equivalent_set_node in runtime_term_sharing_target_equivalent_set:
+                await add_runtime_terms_to_node_only(
+                    runtime_term_sharing_target_equivalent_set_node,
+                    runtime_term_sharing_target_equivalent_set_runtime_term_set_delta
+                )
+
+            for runtime_term_sharing_acquirer_equivalent_set_node in runtime_term_sharing_acquirer_equivalent_set:
+                await add_runtime_terms_to_node_only(
+                    runtime_term_sharing_acquirer_equivalent_set_node,
+                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta
+                )

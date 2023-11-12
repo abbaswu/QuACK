@@ -301,14 +301,14 @@ async def collect_and_resolve_typing_constraints(
                     and unwrapped_v in unwrapped_runtime_functions_to_named_function_definitions
             ):
                 function_definition = unwrapped_runtime_functions_to_named_function_definitions[unwrapped_v]
+
                 (
-                    posargs,
-                    vararg,
-                    kwonlyargs,
-                    kwarg
-                ) = get_parameters(function_definition)
-                if posargs:
-                    first_parameter: ast.arg = posargs[0]
+                    parameter_list,
+                    symbolic_return_value
+                ) = nodes_to_parameter_lists_and_symbolic_return_values[function_definition]
+
+                if parameter_list:
+                    first_parameter: ast.arg = parameter_list[0]
 
                     if is_classmethod:
                         first_parameter_of_classmethods.add(first_parameter)
@@ -319,7 +319,9 @@ async def collect_and_resolve_typing_constraints(
         for first_parameter_of_instance_method in first_parameter_of_instance_methods:
             await set_node_to_be_instance_of(first_parameter_of_instance_method, runtime_class)
 
-        await set_equivalent(first_parameter_of_classmethods | {top_level_class_definition})
+        await set_equivalent(first_parameter_of_classmethods)
+        for first_parameter_of_classmethod in first_parameter_of_classmethods:
+            await add_runtime_terms(first_parameter_of_classmethod, {runtime_class})
 
     # --------------------------------------------------------------------------------------------- #
     # Name resolution.
@@ -440,10 +442,9 @@ async def collect_and_resolve_typing_constraints(
                 name: str,
                 node: _ast.AST,
                 store: bool = False
-        ) -> None:
+        ) -> _ast.AST:
             """
-            Finds the last definition node for an accessed name under the current scope,
-            and optionally sets the last definition node as equivalent to the node that accesses the name.
+            Finds the last definition node for an accessed name under the current scope.
             If no definition node can be found,
             adds the node that accesses the name to local names within the current scope.
             """
@@ -461,28 +462,27 @@ async def collect_and_resolve_typing_constraints(
                 )
 
                 if store:
-                    nodes_providing_scope_to_local_names_to_definition_nodes[current_scope][name] = node
                     logging.info(
                         'We are storing, thus, we are redefining the name %s.',
                         name
                     )
-                else:
-                    # Set the last definition node to be equivalent to the current node
-                    logging.info(
-                        'We are loading, thus, we set the last definition node to be equivalent to the current node.'
-                    )
-                    await set_equivalent({node, last_definition_node})
 
+                    nodes_providing_scope_to_local_names_to_definition_nodes[current_scope][name] = node
+                    return node
+                else:
+                    return last_definition_node
             else:
                 # Add the node that accesses the name to local names within the current scope
-                nodes_providing_scope_to_local_names_to_definition_nodes[current_scope][name] = node
-
                 if not store:
                     logging.error(
                         'Cannot find the last definition node for accessed name %s given the scope stack %s. Added a node that accesses the name to local names within the current scope.',
                         name,
                         scope_stack
                     )
+
+                nodes_providing_scope_to_local_names_to_definition_nodes[current_scope][name] = node
+
+                return node
 
         async def name_resolution_callback(
                 scope_stack: list[NodeProvidingScope],
@@ -492,12 +492,19 @@ async def collect_and_resolve_typing_constraints(
             # ast.Name(id, ctx)
             if isinstance(node, ast.Name):
                 # Handle accessed name
-                await handle_node_that_accesses_name(
+                current_or_last_definition_node = await handle_node_that_accesses_name(
                     scope_stack,
                     node.id,
                     node,
                     isinstance(node.ctx, ast.Store)
                 )
+
+                if node != current_or_last_definition_node:
+                    # Set the current node to be equivalent to the current or last definition node
+                    await set_equivalent({
+                        node,
+                        current_or_last_definition_node
+                    }, propagate_runtime_terms=True)
             # ast.AugAssign(target, op, value)
             if isinstance(node, ast.AugAssign):
                 if isinstance(node.target, ast.Name):
@@ -511,8 +518,8 @@ async def collect_and_resolve_typing_constraints(
                         # Set the last definition node to be equivalent to the current node
                         await set_equivalent({
                             node.target,
-                            last_definition_node
-                        })
+                            last_definition_node,
+                        }, propagate_runtime_terms=True)
             # ast.ExceptHandler(type, name, body)
             if isinstance(node, ast.ExceptHandler):
                 if node.name is not None:
@@ -800,7 +807,7 @@ async def collect_and_resolve_typing_constraints(
                 node,
                 node.target,
                 node.value
-            })
+            }, propagate_runtime_terms=True)
 
         # ast.Subscript(value, slice, ctx)
         if isinstance(node, ast.Subscript):
@@ -895,7 +902,7 @@ async def collect_and_resolve_typing_constraints(
             await set_equivalent({
                 node.value,
                 *node.targets
-            })
+            }, propagate_runtime_terms=True)
 
         # ast.AnnAssign(target, annotation, value, simple)
         if isinstance(node, ast.AnnAssign):
@@ -904,7 +911,7 @@ async def collect_and_resolve_typing_constraints(
                 await set_equivalent({
                     node.target,
                     node.value
-                })
+                }, propagate_runtime_terms=True)
 
         # ast.AugAssign(target, op, value)
         if isinstance(node, ast.AugAssign):
@@ -915,7 +922,7 @@ async def collect_and_resolve_typing_constraints(
             await set_equivalent({
                 node.target,
                 node.value
-            })
+            }, propagate_runtime_terms=True)
 
         # ast.For(target, iter, body, orelse, type_comment)
         if isinstance(node, ast.For):

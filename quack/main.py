@@ -21,9 +21,10 @@ from parameter_lists_and_symbolic_return_values import get_parameter_lists_and_s
     nodes_to_parameter_lists_and_symbolic_return_values
 from query_result_dict import *
 from relations import NonEquivalenceRelationGraph, EquivalenceRelationGraph
-from resolve_typing_constraints import node_disjoint_set, equivalent_set_top_nodes_to_runtime_term_sets, \
+from resolve_typing_constraints import node_disjoint_set, \
     equivalent_set_top_node_non_equivalence_relation_graph, nodes_to_attribute_counters, \
-    node_non_equivalence_relation_graph
+    node_non_equivalence_relation_graph, runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets, \
+    runtime_term_sharing_node_disjoint_set
 from runtime_term import RuntimeTerm
 from trie import search
 from type_inference import TypeInference
@@ -264,9 +265,11 @@ def main():
             equivalent_set_top_nodes_to_attribute_counters[equivalent_set_top_node] += nodes_to_attribute_counters[node]
 
     type_inference = TypeInference(
+        node_disjoint_set,
         equivalent_set_top_nodes_to_attribute_counters,
-        equivalent_set_top_nodes_to_runtime_term_sets,
         equivalent_set_top_node_non_equivalence_relation_graph,
+        runtime_term_sharing_node_disjoint_set,
+        runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets,
         class_query_database,
         client
     )
@@ -292,7 +295,7 @@ def main():
             nodes_to_attribute_counters,
             node_non_equivalence_relation_graph,
             equivalent_set_top_nodes_to_attribute_counters,
-            equivalent_set_top_nodes_to_runtime_term_sets,
+            runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets,
             node_to_module_name_dict,
             indent_level + 1
         )

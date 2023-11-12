@@ -11,6 +11,7 @@ from types import ModuleType, FunctionType
 import numpy as np
 
 from determine_number_of_type_variables import determine_number_of_type_variables
+from disjoint_set import DisjointSet
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
 from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationTuple, NonEquivalenceRelationType
 from runtime_term import RuntimeTerm, Instance
@@ -20,21 +21,25 @@ from class_query_database import ClassQueryDatabase
 from typeshed_client_ex.client import Client
 
 from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, TypeshedClass, from_runtime_class, \
-    TypeshedTypeVariable, subscribe, replace_type_variables_in_type_annotation
+    TypeshedTypeVariable, subscribe, replace_type_variables_in_type_annotation, Subscription
 
 
 class TypeInference:
     def __init__(
             self,
+            node_disjoint_set: DisjointSet[_ast.AST],
             equivalent_node_disjoint_set_top_nodes_to_attribute_counters: defaultdict[ast.AST, Counter[str]],
-            equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets: defaultdict[ast.AST, set[RuntimeTerm]],
             equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph: NonEquivalenceRelationGraph,
+            runtime_term_sharing_node_disjoint_set: DisjointSet[_ast.AST],
+            runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets: defaultdict[ast.AST, set[RuntimeTerm]],
             type_query_database: ClassQueryDatabase,
             client: Client
     ):
+        self.node_disjoint_set = node_disjoint_set
         self.equivalent_node_disjoint_set_top_nodes_to_attribute_counters = equivalent_node_disjoint_set_top_nodes_to_attribute_counters
-        self.equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets = equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets
         self.equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph = equivalent_node_disjoint_set_top_nodes_non_equivalence_relation_graph
+        self.runtime_term_sharing_node_disjoint_set = runtime_term_sharing_node_disjoint_set
+        self.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets = runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets
         self.type_query_database = type_query_database
         self.client = client
 
@@ -79,11 +84,17 @@ class TypeInference:
 
             can_be_none: bool = False
 
-            for node in equivalent_node_disjoint_set_top_nodes:
-                for runtime_term in self.equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets[node]:
-                    if isinstance(runtime_term, Instance):
-                        if runtime_term.class_ is type(None):
-                            can_be_none = True
+            runtime_term_sharing_node_disjoint_set_top_node_set = {
+                self.runtime_term_sharing_node_disjoint_set.find(equivalent_node)
+                for node in equivalent_node_disjoint_set_top_nodes
+                for equivalent_node in self.node_disjoint_set.get_containing_set(node)
+            }
+
+            for runtime_term_sharing_node_disjoint_set_top_node in runtime_term_sharing_node_disjoint_set_top_node_set:
+                if Instance(type(None)) in self.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                    runtime_term_sharing_node_disjoint_set_top_node
+                ]:
+                    can_be_none = True
 
             logging.info(
                 '%sCan %s be None? %s',
@@ -318,7 +329,7 @@ class TypeInference:
                             top_class_prediction == TypeshedClass('typing', 'Callable')
                         and number_of_type_variables >= 2
                         and any((
-                            Instance(type(Ellipsis)) in self.equivalent_node_disjoint_set_top_nodes_to_runtime_term_sets[first_argument_node]
+                            Instance(type(Ellipsis)) in self.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[first_argument_node]
                             for first_argument_node
                             in type_variables_to_associated_node_sets[
                                 type_variable_list[0]
@@ -378,6 +389,9 @@ class TypeInference:
                     return_value = type_inference_result
                 else:
                     return_value = top_class_prediction
+
+                if can_be_none:
+                    return_value = subscribe(TypeshedClass('typing', 'Optional'), (return_value,))
 
             self.type_inference_cache[equivalent_node_disjoint_set_top_nodes] = return_value
 
