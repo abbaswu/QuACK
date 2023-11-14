@@ -6,20 +6,25 @@ from type_inference_class import TypeInferenceClass
 from type_inference_result import TypeInferenceResult
 
 
-parser: Lark = Lark(r"""
-type_annotation: class | subscription | callable
+# Based on extyper/types.py in the Stray codebase
+parser: Lark = Lark(r'''
+type_annotation: class | subscription | callable | nothing | partial
 class: NAME ("." NAME)*
 subscription: class "[" type_annotation ("," type_annotation)* "]"
-callable: "def" "(" arguments ")" "->" type_annotation
-arguments: arg ("," arg)* | vararg | 
-arg: NAME ":" type_annotation
+callable: "def" "(" args ")" "->" type_annotation
+args: arg? ("," arg)*
+arg: posarg | vararg | kwarg
+posarg: NAME ":" type_annotation
 vararg: "*" NAME ":" type_annotation
+kwarg: "**" NAME ":" type_annotation
+nothing: "<nothing>"
+partial: "<" "partial" type_annotation ">"
 
 %import common.WS
 %import python.NAME
 
 %ignore WS
-""",
+''',
 start='type_annotation',
 parser='lalr')
 
@@ -28,23 +33,30 @@ def handle_type_annotation_tree(
     type_annotation_tree: Tree,
     last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
 ) -> TypeInferenceResult:
-    # type_annotation: class | subscription | callable
-    class_subscription_or_callable_tree: Tree = type_annotation_tree.children[0]
-    rule: str = class_subscription_or_callable_tree.data.value
+    # type_annotation: class | subscription | callable | nothing | partial
+    class_subscription_callable_nothing_partial_tree: Tree = type_annotation_tree.children[0]
+    rule: str = class_subscription_callable_nothing_partial_tree.data.value
     if rule == 'class':
         type_inference_class: TypeInferenceClass = handle_class_tree(
-            class_subscription_or_callable_tree,
+            class_subscription_callable_nothing_partial_tree,
             last_module_component_and_class_name_to_class_dict
         )
         return TypeInferenceResult(type_inference_class)
     elif rule == 'subscription':
         return handle_subscription_tree(
-            class_subscription_or_callable_tree,
+            class_subscription_callable_nothing_partial_tree,
             last_module_component_and_class_name_to_class_dict
         )
     elif rule == 'callable':
         return handle_callable_tree(
-            class_subscription_or_callable_tree,
+            class_subscription_callable_nothing_partial_tree,
+            last_module_component_and_class_name_to_class_dict
+        )
+    elif rule == 'nothing':
+        return TypeInferenceResult(TypeInferenceClass('typing', 'NoReturn'))
+    elif rule == 'partial':
+        return handle_partial_tree(
+            class_subscription_callable_nothing_partial_tree,
             last_module_component_and_class_name_to_class_dict
         )
     else:
@@ -73,10 +85,10 @@ def handle_class_tree(
     elif len(names) == 2:
         last_module_component: str = names[0]
         class_name: str = names[1]
-        return last_module_component_and_class_name_to_class_dict.get(
-            (last_module_component, class_name),
-            TypeInferenceClass(last_module_component, class_name)
-        )
+        if (last_module_component, class_name) in last_module_component_and_class_name_to_class_dict:
+            return last_module_component_and_class_name_to_class_dict[(last_module_component, class_name)]
+        else:
+            return TypeInferenceClass(last_module_component, class_name)
     elif len(names) > 2:
         module_name: str = '.'.join(names[:-1])
         class_name: str = names[-1]
@@ -112,15 +124,15 @@ def handle_callable_tree(
     callable_tree: Tree,
     last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
 ) -> TypeInferenceResult:
-    # "def" "(" arguments ")" "->" type_annotation
-    arguments_tree: Tree = callable_tree.children[0]
+    # "def" "(" args ")" "->" type_annotation
+    args_tree: Tree = callable_tree.children[0]
     type_annotation_tree: Tree = callable_tree.children[1]
     parameters_and_return_value_type_inference_result_list: list[
         TypeInferenceResult
     ] = []
     parameters_and_return_value_type_inference_result_list.extend(
-        handle_arguments_tree(
-            arguments_tree,
+        handle_args_tree(
+            args_tree,
             last_module_component_and_class_name_to_class_dict
         )
     )
@@ -136,37 +148,61 @@ def handle_callable_tree(
     )
 
 
-def handle_arguments_tree(
-    arguments_tree: Tree,
+def handle_args_tree(
+    args_tree: Tree,
     last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
 ) -> list[TypeInferenceResult]:
-    # arguments: arg ("," arg)* | vararg |
+    # arg? ("," arg)*
     parameters_type_inference_result_list: list[TypeInferenceResult] = []
-    if arguments_tree.children:
-        rule: str = arguments_tree.children[0].data.value
-        if rule == 'arg':
-            for arg_tree in arguments_tree.children:
-                parameters_type_inference_result_list.append(
-                    handle_arg_or_vararg_tree(
-                        arg_tree,
-                        last_module_component_and_class_name_to_class_dict
-                    )
-                )
-        elif rule == 'vararg':
-            # Use a single builtins.ellipsis to represent varargs
+
+    posarg_tree_list: list[Tree] = []
+    contains_vararg_or_kwarg: bool = False
+
+    for arg_tree in args_tree.children:
+        # arg: posarg | vararg | kwarg
+        posarg_vararg_or_kwarg_tree = arg_tree.children[0]
+        rule: str = posarg_vararg_or_kwarg_tree.data.value
+
+        if rule == 'posarg':
+            posarg_tree_list.append(posarg_vararg_or_kwarg_tree)
+        else:
+            contains_vararg_or_kwarg = True
+    
+    if contains_vararg_or_kwarg:
+        # Use a single builtins.ellipsis to represent vararg or kwarg
+        parameters_type_inference_result_list.append(
+            TypeInferenceResult(TypeInferenceClass('builtins', 'ellipsis'))
+        )
+    else:
+        for posarg_tree in posarg_tree_list:
             parameters_type_inference_result_list.append(
-                TypeInferenceResult(TypeInferenceClass('builtins', 'ellipsis'))
+                handle_posarg_tree(
+                    posarg_tree,
+                    last_module_component_and_class_name_to_class_dict
+                )
             )
+
     return parameters_type_inference_result_list
 
 
-def handle_arg_or_vararg_tree(
-    arg_or_vararg_tree: Tree,
+def handle_posarg_tree(
+    posarg_tree: Tree,
     last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
 ) -> TypeInferenceResult:
-    # arg: NAME ":" type_annotation
-    # vararg: "*" NAME ":" type_annotation
-    type_annotation_tree: Tree = arg_or_vararg_tree.children[1]
+    # posarg: NAME ":" type_annotation
+    type_annotation_tree: Tree = posarg_tree.children[1]
+    return handle_type_annotation_tree(
+        type_annotation_tree,
+        last_module_component_and_class_name_to_class_dict
+    )
+
+
+def handle_partial_tree(
+    partial_tree: Tree,
+    last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
+) -> TypeInferenceResult:
+    # partial: "<" "partial" type_annotation ">"
+    type_annotation_tree: Tree = partial.children[0]
     return handle_type_annotation_tree(
         type_annotation_tree,
         last_module_component_and_class_name_to_class_dict
@@ -196,11 +232,16 @@ def get_type_annotation_parser(
     ) -> TypeInferenceResult:
         nonlocal last_module_component_and_class_name_to_class_dict
 
-        type_annotation_tree: Tree = parser.parse(type_annotation_string)
-        return handle_type_annotation_tree(
-            type_annotation_tree,
-            last_module_component_and_class_name_to_class_dict
-        )
+        try:
+            type_annotation_tree: Tree = parser.parse(type_annotation_string)
+            return handle_type_annotation_tree(
+                type_annotation_tree,
+                last_module_component_and_class_name_to_class_dict
+            )
+        except:
+            import pudb
+            pudb.set_trace()
+            return TypeInferenceResult(TypeInferenceClass('typing', 'Any'))
 
     # Return type_annotation_parser
     return type_annotation_parser

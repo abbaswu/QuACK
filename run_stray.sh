@@ -2,7 +2,7 @@
 
 STRAY_ROOT='/root/stray'
 
-PRINT_STRAY_RESULT_DIRECTORY='/root/parse_stray_result_directory.py'
+PARSE_STRAY_RESULT_DIRECTORY='/root/parse_stray_result_directory.py'
 
 # Functions
 
@@ -121,4 +121,4 @@ set -e
 
 cd "$current_working_directory"
 
-python3 "$PRINT_STRAY_RESULT_DIRECTORY" --stray-result-directory "$STRAY_ROOT/result" --query-dict "$query_dict" --absolute-module-search-path "$absolute_module_search_path" --output-file "$output_file_path"
+python3 "$PARSE_STRAY_RESULT_DIRECTORY" --stray-result-directory "$STRAY_ROOT/result" --query-dict "$query_dict" --absolute-module-search-path "$absolute_module_search_path" --output-file "$output_file_path"

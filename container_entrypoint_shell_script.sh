@@ -12,6 +12,16 @@ OUTPUT_PATH='/mnt/output_path'
 # MUST NOT end with a '/', otherwise breaks hityper
 LOCAL_MODULE_SEARCH_PATH='/tmp/local_module_search_path'
 
+OUTPUT_JSON="${OUTPUT_PATH}/output.json"
+
+TIME_OUTPUT_JSON="${OUTPUT_PATH}/time_output.json"
+
+BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME="${OUTPUT_PATH}/before_type_weaving_mypy_output_dataframe.csv"
+
+AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME="${OUTPUT_PATH}/after_type_weaving_mypy_output_dataframe.csv"
+
+NEW_MYPY_ERRORS_DATAFRAME="${OUTPUT_PATH}/new_mypy_errors_dataframe.csv"
+
 # Functions
 
 is_port_in_use () {
@@ -109,11 +119,14 @@ python3 /root/strip_type_annotations.py --directory "$LOCAL_MODULE_SEARCH_PATH"
 cd /root
 
 # Run method, modifying the contents of $LOCAL_MODULE_SEARCH_PATH
-python3 /root/main.py -m "$method" -s "$LOCAL_MODULE_SEARCH_PATH" -p "$module_prefix"
-return_code="$?"
+python3 /root/main.py -m "$method" -s "$LOCAL_MODULE_SEARCH_PATH" -p "$module_prefix" -o "$OUTPUT_JSON" -t "$TIME_OUTPUT_JSON" -b "$BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME" -a "$AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME"
+
+# Diff BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME and AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME
+touch MYPY_OUTPUT_DATAFRAME_DIFF
+
+# Get new mypy errors dataframe
+python3 /root/get_new_mypy_errors_dataframe.py -b "$BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME" -a "$AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME" -n "$NEW_MYPY_ERRORS_DATAFRAME"
 
 # Copy contents from $LOCAL_MODULE_SEARCH_PATH to $OUTPUT_PATH
-if [ "$return_code" -eq 0 ]
-then
-    cp -R -v -f "$LOCAL_MODULE_SEARCH_PATH"/* "$OUTPUT_PATH"/
-fi
+cp -R -v -f "$LOCAL_MODULE_SEARCH_PATH"/* "$OUTPUT_PATH"/
+
