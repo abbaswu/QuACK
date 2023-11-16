@@ -24,7 +24,7 @@ subscription: class "[" type_annotation? ("," type_annotation)* "]"
 callable: "def" "(" args ")" ("->" type_annotation)?
 args: arg? ("," arg)*
 arg: posarg | vararg | kwarg
-posarg: NAME ":" type_annotation "="?
+posarg: (NAME ":")? type_annotation "="?
 vararg: "*" (NAME ":")? type_annotation "="?
 kwarg: "**" (NAME ":")? type_annotation "="?
 nothing: "<nothing>"
@@ -247,8 +247,8 @@ def handle_posarg_tree(
     posarg_tree: Tree,
     last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
 ) -> TypeInferenceResult:
-    # posarg: NAME ":" type_annotation
-    type_annotation_tree: Tree = posarg_tree.children[1]
+    # posarg: (NAME ":")? type_annotation
+    type_annotation_tree: Tree = posarg_tree.children[-1]
     return handle_type_annotation_tree(
         type_annotation_tree,
         last_module_component_and_class_name_to_class_dict
