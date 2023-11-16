@@ -22,6 +22,7 @@ def parse(
         dict()
     )
 
+
 if __name__ == '__main__':
     assert str(parse('None')) == 'None'
     assert str(parse('builtins.int')) == 'builtins.int'
@@ -32,3 +33,8 @@ if __name__ == '__main__':
     assert str(parse('<nothing>')) == 'typing.NoReturn'
     assert str(parse('Tuple[<partial None>, <partial None>]')) == 'builtins.tuple[None, None]'
     assert str(parse('Tuple[Union[Any, builtins.str], Union[Any, builtins.str]]')) == 'builtins.tuple[typing.Union[typing.Any, builtins.str], typing.Union[typing.Any, builtins.str]]'
+    assert str(parse('Tuple[<partial list[?]>, builtins.list[builtins.tuple[builtins.str]]]')) == 'builtins.tuple[builtins.list[typing.Any], builtins.list[builtins.tuple[builtins.str, ...]]]'
+    assert str(parse('def (max_workers: Union[None, builtins.int] =, thread_name_prefix: builtins.str =, initializer: Union[None, def (*Any, **Any)] =, initargs: builtins.tuple[Any] =) -> concurrent.futures.thread.ThreadPoolExecutor')) == 'typing.Callable[[typing.Union[None, builtins.int], builtins.str, typing.Union[None, typing.Callable[..., None]], builtins.tuple[typing.Any, ...]], concurrent.futures.thread.ThreadPoolExecutor]'
+    assert str(parse('Tuple[]')) == 'builtins.tuple'
+    assert str(parse("Literal['+a']")) == "typing.Literal['+a']"
+    assert str(parse('Overload(def (message: builtins.object, errors: Tuple[] =, details: builtins.object =, response: builtins.object =, error_info: builtins.object =) -> google.api_core.exceptions.GoogleAPICallError, def (message: builtins.object, errors: builtins.object=, details: builtins.object =, response: builtins.object =, error_info: builtins.object =) -> google.api_core.exceptions.GoogleAPICallError, def (message: builtins.object, errors: builtins.object =, details: Tuple[] =, response: builtins.object =,error_info: builtins.object =) -> google.api_core.exceptions.GoogleAPICallError, def (message: builtins.object, errors: Tuple[] =, details: Tuple[] =, response: builtins.object =, error_info: builtins.object =) -> google.api_core.exceptions.GoogleAPICallError)')) == 'typing.Callable[[builtins.object, typing.Union[builtins.object, builtins.tuple], typing.Union[builtins.object, builtins.tuple], builtins.object, builtins.object], google.api_core.exceptions.GoogleAPICallError]'
