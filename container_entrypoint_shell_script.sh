@@ -22,6 +22,8 @@ AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME="${OUTPUT_PATH}/after_type_weaving_mypy
 
 NEW_MYPY_ERRORS_DATAFRAME="${OUTPUT_PATH}/new_mypy_errors_dataframe.csv"
 
+RAW_OUTPUT_DIRECTORY="${OUTPUT_PATH}/raw_output_directory"
+
 # Functions
 
 is_port_in_use () {
@@ -119,7 +121,7 @@ python3 /root/strip_type_annotations.py --directory "$LOCAL_MODULE_SEARCH_PATH"
 cd /root
 
 # Run method, modifying the contents of $LOCAL_MODULE_SEARCH_PATH
-python3 /root/main.py -m "$method" -s "$LOCAL_MODULE_SEARCH_PATH" -p "$module_prefix" -o "$OUTPUT_JSON" -t "$TIME_OUTPUT_JSON" -b "$BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME" -a "$AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME"
+python3 /root/main.py -m "$method" -s "$LOCAL_MODULE_SEARCH_PATH" -p "$module_prefix" -o "$OUTPUT_JSON" -t "$TIME_OUTPUT_JSON" -b "$BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME" -a "$AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME" -r "$RAW_OUTPUT_DIRECTORY"
 
 # Diff BEFORE_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME and AFTER_TYPE_WEAVING_MYPY_OUTPUT_DATAFRAME
 touch MYPY_OUTPUT_DATAFRAME_DIFF

@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--after-type-weaving-mypy-output-dataframe', type=str, required=True)
     parser.add_argument('-o', '--output-json', type=str, required=True)
     parser.add_argument('-t', '--time-output-json', type=str, required=True)
+    parser.add_argument('-r', '--raw-output-directory', type=str, required=True)
     args = parser.parse_args()
 
     method: str = args.method
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     after_type_weaving_mypy_output_dataframe: str = args.after_type_weaving_mypy_output_dataframe
     output_json: str = args.output_json
     time_output_json: str = args.time_output_json
+    raw_output_directory: str = args.raw_output_directory
 
     # Do static import analysis
     (
@@ -59,7 +61,8 @@ if __name__ == '__main__':
         module_search_path,
         module_prefix,
         module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
-        module_name_to_import_from_tuple_set_dict
+        module_name_to_import_from_tuple_set_dict,
+        raw_output_directory
     )
     
     # Run mypy and parse output before type weaving

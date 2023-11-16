@@ -80,6 +80,9 @@ def handle_class_tree(
         # Resolve Tuple to builtins.tuple
         elif name == 'Tuple':
             return TypeInferenceClass('builtins', 'tuple')
+        # Resolve Union to typing.Union
+        elif name == 'Union':
+            return TypeInferenceClass('typing', 'Union')
         else:
             assert False
     elif len(names) == 2:
@@ -202,7 +205,7 @@ def handle_partial_tree(
     last_module_component_and_class_name_to_class_dict: dict[tuple[str, str], TypeInferenceClass]
 ) -> TypeInferenceResult:
     # partial: "<" "partial" type_annotation ">"
-    type_annotation_tree: Tree = partial.children[0]
+    type_annotation_tree: Tree = partial_tree.children[0]
     return handle_type_annotation_tree(
         type_annotation_tree,
         last_module_component_and_class_name_to_class_dict

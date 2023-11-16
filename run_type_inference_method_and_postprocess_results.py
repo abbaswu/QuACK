@@ -18,11 +18,17 @@ def run_type_inference_method_and_postprocess_results(
     module_search_path: str,
     module_prefix: str,
     module_name_to_class_name_to_method_name_to_parameter_name_list_dict: dict[str, dict[str, dict[str, list[str]]]],
-    module_name_to_import_from_tuple_set_dict: dict[str, set[tuple[str, str, str]]]
+    module_name_to_import_from_tuple_set_dict: dict[str, set[tuple[str, str, str]]],
+    raw_output_directory: str
 ):
     # Create a temporary file
     with tempfile.TemporaryDirectory() as temporary_directory_name:
         it = tempfile._get_candidate_names()
+
+        query_dict_temporary_file_name = next(it)
+        query_dict_temporary_file_path = os.path.join(temporary_directory_name, query_dict_temporary_file_name)
+        with open(query_dict_temporary_file_path, 'w') as fp:
+            json.dump(query_dict, fp, indent=4)
 
         output_temporary_file_name = next(it)
         output_temporary_file_path = os.path.join(temporary_directory_name, output_temporary_file_name)
@@ -37,7 +43,7 @@ def run_type_inference_method_and_postprocess_results(
                 '-m',
                 method,
                 '-q',
-                json.dumps(query_dict),
+                query_dict_temporary_file_path,
                 '-s',
                 module_search_path,
                 '-o',
@@ -45,7 +51,9 @@ def run_type_inference_method_and_postprocess_results(
                 '-p',
                 module_prefix,
                 '-t',
-                time_temporary_file_path
+                time_temporary_file_path,
+                '-r',
+                raw_output_directory
             ]
         )
 

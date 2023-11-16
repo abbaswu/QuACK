@@ -1,33 +1,13 @@
+set -e
+set -o pipefail
+
 # Constants
 
 PRINT_PYTHON_FILE_PATHS='/root/print_python_file_paths.py'
 
 PARSE_HITYPER_OUTPUT_DIRECTORY='/root/parse_hityper_output_directory.py'
 
-# Functions
-
-verify_query_dict () {
-query_dict="$1"
-
-python3 -u -c """
-import json
-
-query_dict_string='''$query_dict'''
-query_dict = json.loads(query_dict_string)
-
-assert isinstance(query_dict, dict)
-for module_name, module_name_level_query_dict in query_dict.items():
-    assert isinstance(module_name, str)
-    assert isinstance(module_name_level_query_dict, dict)
-    for class_name_or_global, class_name_or_global_level_query_dict in module_name_level_query_dict.items():
-        assert isinstance(class_name_or_global, str)
-        assert isinstance(class_name_or_global_level_query_dict, dict)
-        for function_name, parameter_name_or_return_level_query_dict in class_name_or_global_level_query_dict.items():
-            assert isinstance(function_name, str)
-            for parameter_name_or_return in parameter_name_or_return_level_query_dict:
-                assert isinstance(parameter_name_or_return, str)
-"""
-}
+VERIFY_QUERY_DICT='/root/verify_query_dict.py'
 
 # Variables from command-line arguments
 
@@ -40,7 +20,10 @@ module_search_path=
 # Output file path, pass with option `-o`
 output_file_path=
 
-while getopts ':q:s:o:' name
+# Raw output directory, pass with option `-r`
+raw_output_directory=
+
+while getopts ':q:s:o:r:' name
 do
     case $name in
         q)
@@ -53,6 +36,9 @@ do
         o)
             output_file_path="$OPTARG"
             ;;
+        r)
+            raw_output_directory="$OPTARG"
+            ;;
         :)
             echo "Option -$OPTARG requires an argument"
             ;;
@@ -64,13 +50,13 @@ done
 
 # Sanity check
 
-if [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ]
+if [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ] || [ -z "$raw_output_directory" ]
 then
-    echo "Usage: $0 -q <query_dict> -s <module_search_path> -o <output_file_path>" >&2
+    echo "Usage: $0 -q <query_dict> -s <module_search_path> -o <output_file_path> -r <raw_output_directory>" >&2
     exit 1
 fi
 
-if ! verify_query_dict "$query_dict"
+if ! python3 "$VERIFY_QUERY_DICT" --query-dict "$query_dict"
 then
     echo "Invalid query dict provided!" >&2
     echo "A valid query dict should be a valid JSON string that can be represented using the following Python data type:" >&2
@@ -106,3 +92,5 @@ do
 done
 
 python3 "$PARSE_HITYPER_OUTPUT_DIRECTORY" --hityper-output-directory "$hityper_output_directory" --query-dict "$query_dict" --module-search-path "$module_search_path" --output-file "$output_file_path"
+
+cp -R -v "$hityper_output_directory" "$raw_output_directory"

@@ -3,30 +3,9 @@
 set -e
 set -o pipefail
 
-# Functions
+# Constants
 
-verify_query_dict () {
-query_dict="$1"
-
-python3 -u -c """
-import json
-
-query_dict_string='''$query_dict'''
-query_dict = json.loads(query_dict_string)
-
-assert isinstance(query_dict, dict)
-for module_name, module_name_level_query_dict in query_dict.items():
-    assert isinstance(module_name, str)
-    assert isinstance(module_name_level_query_dict, dict)
-    for class_name_or_global, class_name_or_global_level_query_dict in module_name_level_query_dict.items():
-        assert isinstance(class_name_or_global, str)
-        assert isinstance(class_name_or_global_level_query_dict, dict)
-        for function_name, parameter_name_or_return_level_query_dict in class_name_or_global_level_query_dict.items():
-            assert isinstance(function_name, str)
-            for parameter_name_or_return in parameter_name_or_return_level_query_dict:
-                assert isinstance(parameter_name_or_return, str)
-"""
-}
+VERIFY_QUERY_DICT='/root/verify_query_dict.py'
 
 # Variables from command-line arguments
 
@@ -48,7 +27,10 @@ module_prefix=
 # Time output file path, pass with option `-t`
 time_output_file_path=
 
-while getopts ':m:q:s:o:p:t:' name
+# Raw output directory, pass with option `-r`
+raw_output_directory=
+
+while getopts ':m:q:s:o:p:t:r:' name
 do
     case $name in
         m)
@@ -70,6 +52,9 @@ do
         t)
             time_output_file_path="$OPTARG"
             ;;
+        r)
+            raw_output_directory="$OPTARG"
+            ;;
         :)
             echo "Option -$OPTARG requires an argument"
             ;;
@@ -81,13 +66,13 @@ done
 
 # Sanity check
 
-if [ -z "$method" ] || [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ] || [ -z "$module_prefix" ] || [ -z "$time_output_file_path" ]
+if [ -z "$method" ] || [ -z "$query_dict" ] || [ -z "$module_search_path" ] || [ -z "$output_file_path" ] || [ -z "$module_prefix" ] || [ -z "$time_output_file_path" ] || [ -z "$raw_output_directory" ]
 then
-    echo "Usage: $0 -m <method> -q <query_dict> -s <module_search_path> -o <output_file_path> -p <module_prefix> -t <time_output_file_path>" >&2
+    echo "Usage: $0 -m <method> -q <query_dict> -s <module_search_path> -o <output_file_path> -p <module_prefix> -t <time_output_file_path> -r <raw_output_directory>" >&2
     exit 1
 fi
 
-if ! verify_query_dict "$query_dict"
+if ! python3 "$VERIFY_QUERY_DICT" --query-dict "$query_dict"
 then
     echo "Invalid query dict provided!" >&2
     echo "A valid query dict should be a valid JSON string that can be represented using the following Python data type:" >&2
@@ -151,14 +136,14 @@ case "$method" in
             conda run --no-capture-output --name stray pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
 
-        /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" /bin/bash run_stray.sh -q "$query_dict" -s "$module_search_path" -o "$output_file_path"
+        /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" /bin/bash run_stray.sh -q "$query_dict" -s "$module_search_path" -o "$output_file_path" -r "$raw_output_directory"
         ;;
     hityper)
         if [ -f "${module_search_path}/requirements.txt" ]; then
             conda run --no-capture-output --name hityper pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
 
-        /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" /bin/bash run_hityper.sh -q "$query_dict" -s "$module_search_path" -o "$output_file_path"
+        /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" /bin/bash run_hityper.sh -q "$query_dict" -s "$module_search_path" -o "$output_file_path" -r "$raw_output_directory"
         ;;
     *)
         # error

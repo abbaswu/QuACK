@@ -30,3 +30,5 @@ if __name__ == '__main__':
     assert str(parse('Tuple[builtins.int, builtins.int, builtins.int]')) == 'builtins.tuple[builtins.int, builtins.int, builtins.int]'
     assert str(parse('builtins.tuple[builtins.int]')) == 'builtins.tuple[builtins.int, ...]'
     assert str(parse('<nothing>')) == 'typing.NoReturn'
+    assert str(parse('Tuple[<partial None>, <partial None>]')) == 'builtins.tuple[None, None]'
+    assert str(parse('Tuple[Union[Any, builtins.str], Union[Any, builtins.str]]')) == 'builtins.tuple[typing.Union[typing.Any, builtins.str], typing.Union[typing.Any, builtins.str]]'
