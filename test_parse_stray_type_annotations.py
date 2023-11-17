@@ -39,7 +39,8 @@ if __name__ == '__main__':
     assert str(parse('Tuple[<partial None>, <partial None>]')) == 'builtins.tuple[None, None]'
     assert str(parse('Tuple[Union[Any, builtins.str], Union[Any, builtins.str]]')) == 'builtins.tuple[typing.Union[typing.Any, builtins.str], typing.Union[typing.Any, builtins.str]]'
     assert str(parse('Tuple[<partial list[?]>, builtins.list[builtins.tuple[builtins.str]]]')) == 'builtins.tuple[builtins.list[typing.Any], builtins.list[builtins.tuple[builtins.str, ...]]]'
-    
+    assert str(parse('grpc_status.rpc_status._Status@9')) == 'grpc_status.rpc_status._Status'
+
     assert eval(str(parse('def (max_workers: Union[None, builtins.int] =, thread_name_prefix: builtins.str =, initializer: Union[None, def (*Any, **Any)] =, initargs: builtins.tuple[Any] =) -> builtins.int'))) == typing.Callable[[typing.Union[None, builtins.int], builtins.str, typing.Union[None, typing.Callable[..., None]], builtins.tuple[typing.Any, ...]], builtins.int]
     
     assert eval(str(parse('Tuple[]'))) == builtins.tuple

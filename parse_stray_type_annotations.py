@@ -18,7 +18,7 @@ names_of_classes_in_builtins_to_type_inference_classes: dict[str, TypeInferenceC
 
 # Based on extyper/types.py in the Stray codebase
 parser: Lark = Lark(r'''
-type_annotation: class | subscription | callable | nothing | partial | literal | overload | unknown
+type_annotation: class ("@" INTEGER)? | subscription | callable | nothing | partial | literal | overload | unknown
 class: NAME ("." NAME)*
 subscription: class "[" type_annotation? ("," type_annotation)* "]"
 callable: "def" "(" args ")" ("->" type_annotation)?
