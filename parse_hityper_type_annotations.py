@@ -31,6 +31,16 @@ start='type_annotation',
 parser='lalr')
 
 
+def parser_parse(
+    type_annotation_string: str
+) -> Tree:
+    global parser
+    return parser.parse(
+        # Replace all occurrences of '_@_' with '.'
+        type_annotation_string.replace('_@_', '.')
+    )
+
+
 def handle_type_annotation_tree(
         type_annotation_tree: Tree,
         name_to_defined_or_imported_class_dict: dict[str, TypeInferenceClass]
@@ -172,7 +182,7 @@ def get_type_annotation_parser(
         )
 
         try:
-            type_annotation_tree: Tree = parser.parse(type_annotation_string)
+            type_annotation_tree: Tree = parser_parse(type_annotation_string)
 
             return handle_type_annotation_tree(
                 type_annotation_tree,
