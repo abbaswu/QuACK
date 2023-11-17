@@ -30,9 +30,10 @@ kwarg: "**" (NAME ":")? type_annotation "="?
 nothing: "<nothing>"
 partial: "<" "partial" type_annotation ">"
 literal: "Literal" "[" literal_value "]"
-literal_value: DEC_NUMBER | HEX_NUMBER | BIN_NUMBER | OCT_NUMBER | STRING
+literal_value: INTEGER | STRING
 overload: "Overload" "(" callable ("," callable)* ")"
 unknown: "?"
+INTEGER: "-"? (DEC_NUMBER | HEX_NUMBER | BIN_NUMBER | OCT_NUMBER)
 
 %import common.WS
 %import python.NAME
