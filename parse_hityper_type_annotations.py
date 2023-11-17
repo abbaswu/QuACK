@@ -189,6 +189,9 @@ def get_type_annotation_parser(
                 name_to_defined_or_imported_class_dict
             )
         except lark.exceptions.LarkError:
+            import pudb
+            pudb.set_trace()
+            
             logging.error('Cannot resolve type annotation %s. Leaving the type annotation as is.', type_annotation_string)
             
             return TypeInferenceResult(TypeInferenceClass(None, type_annotation_string))

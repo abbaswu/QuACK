@@ -46,7 +46,7 @@ RUN conda create --name quack -y python=3.10 \
 RUN conda run --name base pip install lark ordered_set pudb pandas
 
 # Install /usr/bin/time
-RUN  apt-get update && apt-get install -y time && apt-get clean
+RUN  apt-get update && apt-get install -y time graphviz libgraphviz-dev && apt-get clean
 
 # Copy entrypoint and data processing scripts
 COPY quack /root/quack/

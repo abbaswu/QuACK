@@ -169,6 +169,8 @@ def contains_return_statement(function_node: typing.Union[ast.FunctionDef, ast.A
 
 
 def main():
+    sys.setrecursionlimit(65536)
+    
     # Set up logging
     # https://stackoverflow.com/questions/10973362/python-logging-function-name-file-name-line-number-using-a-single-file
     FORMAT = '[%(asctime)s %(filename)s %(funcName)s():%(lineno)s]%(levelname)s: %(message)s'

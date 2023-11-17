@@ -160,8 +160,12 @@ class ClassQueryDatabase:
             attributes_in_runtime_class = get_attributes_in_runtime_class(runtime_class)
             if contains(attribute_set_trie_root, attributes_in_runtime_class):
                 type_set = attribute_frozenset_to_candidate_class_set_dict[frozenset(attributes_in_runtime_class)]
-                if issubclass(runtime_class, tuple(type_set)):
-                    logging.warning('Excluded runtime class %s from class query database as a superclass in %s covers its attribute set', runtime_class, type_set)
+                try:
+                    if issubclass(runtime_class, tuple(type_set)):
+                        logging.warning('Excluded runtime class %s from class query database as a superclass in %s covers its attribute set', runtime_class, type_set)
+                        continue
+                except TypeError:
+                    logging.exception('Excluded runtime class %s from class query database.', runtime_class)
                     continue
 
             add(attribute_set_trie_root, attributes_in_runtime_class)
