@@ -8,7 +8,7 @@ To generate an HTML coverage report:
 import ast
 
 import nested_class_and_nested_async_function
-from definitions_to_runtime_terms_mappings import get_definitions_to_runtime_terms_mappings
+from definitions_to_runtime_terms_mappings_singleton import get_definitions_to_runtime_terms_mappings
 
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ import ast
 import typing
 
 from node_visitor import get_child_nodes
-from parameter_lists_and_symbolic_return_values import nodes_to_parameter_lists_and_symbolic_return_values
+from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_and_symbolic_return_values
 from trie import TrieNode
 
 

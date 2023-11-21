@@ -1,3 +1,8 @@
+"""
+NOTE: This module is intended to be used as a singleton.
+Initialize it by calling get_definitions_to_runtime_terms_mappings() once.
+"""
+
 import logging
 
 from get_dict_for_runtime_class import get_comprehensive_dict_for_runtime_class

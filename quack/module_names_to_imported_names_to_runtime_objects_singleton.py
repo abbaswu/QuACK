@@ -1,3 +1,8 @@
+"""
+NOTE: This module is intended to be used as a singleton.
+Initialize it by calling get_module_names_to_imported_names_to_runtime_objects() once.
+"""
+
 import typing
 import logging
 

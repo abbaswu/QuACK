@@ -1,22 +1,26 @@
+"""
+Typing constraints.
+NOTE: This module is intended to be used as a singleton.
+"""
+
 import _ast
 import ast
+import asyncio
 import collections
 import collections.abc
-import inspect
 import itertools
 import logging
 import typing
-
 from collections import Counter
+from collections import defaultdict
 
-import debugging
-from definitions_to_runtime_terms_mappings import unwrapped_runtime_functions_to_named_function_definitions
+import switches_singleton
+from definitions_to_runtime_terms_mappings_singleton import unwrapped_runtime_functions_to_named_function_definitions
 from disjoint_set import DisjointSet
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
 from get_dict_for_runtime_class import get_comprehensive_dict_for_runtime_class
-from get_parameters import get_parameters
 from get_unwrapped_constructor import get_unwrapped_constructor
-from parameter_lists_and_symbolic_return_values import nodes_to_parameter_lists_and_symbolic_return_values
+from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_and_symbolic_return_values
 from propagation_task_generation import generate_propagation_tasks, PropagationTask, AttributeAccessPropagationTask, \
     FunctionCallPropagationTask
 from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationType
@@ -28,12 +32,7 @@ from typeshed_client_ex.type_definitions import TypeshedClass, \
     get_comprehensive_type_annotations_for_parameters_and_return_values, get_type_annotation_of_self, TypeshedFunction, \
     TypeshedTypeAnnotation, TypeshedTypeVariable, iterate_type_variables_in_type_annotation, to_runtime_class, \
     TypeshedClassDefinition, get_attributes_in_class_definition
-from collections import defaultdict
-import asyncio
 from unwrap import unwrap
-
-
-NODE = None
 
 nodes_to_attribute_counters: defaultdict[_ast.AST, Counter[str]] = defaultdict(Counter)
 nodes_to_attribute_counters_lock: asyncio.Lock = asyncio.Lock()
@@ -47,13 +46,14 @@ nodes_to_propagation_task_sets_lock: asyncio.Lock = asyncio.Lock()
 node_disjoint_set: DisjointSet[_ast.AST] = DisjointSet()
 equivalent_set_top_node_non_equivalence_relation_graph: NonEquivalenceRelationGraph = NonEquivalenceRelationGraph()
 runtime_term_sharing_node_disjoint_set: DisjointSet[_ast.AST] = DisjointSet()
-runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets: defaultdict[_ast.AST, set[RuntimeTerm]] = defaultdict(set)
+runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets: defaultdict[
+    _ast.AST, set[RuntimeTerm]] = defaultdict(set)
 node_disjoint_set_lock: asyncio.Lock = asyncio.Lock()
 
 node_non_equivalence_relation_graph: NonEquivalenceRelationGraph = NonEquivalenceRelationGraph()
 node_non_equivalence_relation_graph_lock: asyncio.Lock = asyncio.Lock()
 
-typeshed_client: Client = Client()
+client: Client = Client()
 
 
 async def create_new_node() -> _ast.AST:
@@ -143,10 +143,10 @@ async def add_relation(
         to_node_equivalent_set_top_node = node_disjoint_set.find(to_node)
 
         if not equivalent_set_top_node_non_equivalence_relation_graph.has_relation(
-            from_node_equivalent_set_top_node,
-            to_node_equivalent_set_top_node,
-            relation_type,
-            parameter
+                from_node_equivalent_set_top_node,
+                to_node_equivalent_set_top_node,
+                relation_type,
+                parameter
         ):
             equivalent_set_top_node_non_equivalence_relation_graph.add_relation(
                 from_node_equivalent_set_top_node,
@@ -163,7 +163,11 @@ async def add_relation(
         else:
             induced_equivalent_set = set()
 
-    if relation_type not in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf) and induced_equivalent_set:
+    if (
+            relation_type not in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf)
+            and induced_equivalent_set
+            and switches_singleton.resolve_induced_equivalent_relations
+    ):
         await set_equivalent(induced_equivalent_set, propagate_runtime_terms=False)
 
 
@@ -212,10 +216,10 @@ async def add_argument_of_returned_value_of_relations(
             for argument_node in argument_node_set:
                 argument_node_equivalent_set_top_node = node_disjoint_set.find(argument_node)
                 if not equivalent_set_top_node_non_equivalence_relation_graph.has_relation(
-                    called_function_node_equivalent_set_top_node,
-                    argument_node_equivalent_set_top_node,
-                    NonEquivalenceRelationType.ArgumentOf,
-                    i
+                        called_function_node_equivalent_set_top_node,
+                        argument_node_equivalent_set_top_node,
+                        NonEquivalenceRelationType.ArgumentOf,
+                        i
                 ):
                     equivalent_set_top_node_non_equivalence_relation_graph.add_relation(
                         called_function_node_equivalent_set_top_node,
@@ -227,9 +231,9 @@ async def add_argument_of_returned_value_of_relations(
         for returned_value_node in returned_value_node_set:
             returned_value_node_equivalent_set_top_node = node_disjoint_set.find(returned_value_node)
             if not equivalent_set_top_node_non_equivalence_relation_graph.has_relation(
-                called_function_node_equivalent_set_top_node,
-                returned_value_node_equivalent_set_top_node,
-                NonEquivalenceRelationType.ReturnedValueOf
+                    called_function_node_equivalent_set_top_node,
+                    returned_value_node_equivalent_set_top_node,
+                    NonEquivalenceRelationType.ReturnedValueOf
             ):
                 equivalent_set_top_node_non_equivalence_relation_graph.add_relation(
                     called_function_node_equivalent_set_top_node,
@@ -271,10 +275,13 @@ async def add_runtime_terms(
     async with node_disjoint_set_lock:
         runtime_term_sharing_equivalent_set_top_node = runtime_term_sharing_node_disjoint_set.find(to_node)
 
-        runtime_terms_to_add = runtime_term_set - runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[runtime_term_sharing_equivalent_set_top_node]
-        runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[runtime_term_sharing_equivalent_set_top_node].update(runtime_terms_to_add)
+        runtime_terms_to_add = runtime_term_set - runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+            runtime_term_sharing_equivalent_set_top_node]
+        runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+            runtime_term_sharing_equivalent_set_top_node].update(runtime_terms_to_add)
 
-        all_nodes_in_runtime_term_sharing_equivalent_set = runtime_term_sharing_node_disjoint_set.get_containing_set(to_node)
+        all_nodes_in_runtime_term_sharing_equivalent_set = runtime_term_sharing_node_disjoint_set.get_containing_set(
+            to_node)
 
     if runtime_terms_to_add:
         propagation_tasks = []
@@ -284,7 +291,8 @@ async def add_runtime_terms(
                 nodes_to_runtime_term_sets[node_in_runtime_term_sharing_equivalent_set].update(runtime_terms_to_add)
 
                 relation_types_and_parameters = list(
-                    node_non_equivalence_relation_graph.get_all_relation_types_and_parameters(node_in_runtime_term_sharing_equivalent_set)
+                    node_non_equivalence_relation_graph.get_all_relation_types_and_parameters(
+                        node_in_runtime_term_sharing_equivalent_set)
                 )
 
                 for propagation_task in generate_propagation_tasks(
@@ -309,9 +317,18 @@ async def add_propagation_task(
             add = True
 
     if add:
-        if isinstance(propagation_task, AttributeAccessPropagationTask):
+        if (
+                isinstance(propagation_task, AttributeAccessPropagationTask)
+                and switches_singleton.propagate_attribute_accesses
+        ):
             await handle_attribute_access_propagation_task(node, propagation_task)
-        elif isinstance(propagation_task, FunctionCallPropagationTask):
+        elif (
+                isinstance(propagation_task, FunctionCallPropagationTask)
+                and (
+                        switches_singleton.propagate_stdlib_function_calls
+                        or switches_singleton.propagate_user_defined_function_calls
+                )
+        ):
             await handle_function_call_propagation_task(node, propagation_task)
         else:
             raise TypeError(f'Unknown propagation task type {type(propagation_task)}!')
@@ -350,7 +367,8 @@ async def handle_attribute_access_propagation_task(
             elif isinstance(unwrapped_attribute, UnwrappedRuntimeFunction):
                 # Function defined within the scope of the project
                 if unwrapped_attribute in unwrapped_runtime_functions_to_named_function_definitions:
-                    attribute_access_result = unwrapped_runtime_functions_to_named_function_definitions[unwrapped_attribute]
+                    attribute_access_result = unwrapped_runtime_functions_to_named_function_definitions[
+                        unwrapped_attribute]
                 else:
                     attribute_access_result = unwrapped_attribute
             else:
@@ -491,15 +509,18 @@ async def handle_function_call_propagation_task(
                 named_function_definition
             ]
 
-            for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
-                await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+            if switches_singleton.propagate_user_defined_function_calls:
+                await handle_user_defined_function_call(
+                    parameter_list[1:],  # Skip the first parameter (self or cls)
+                    apparent_argument_node_set_list
+                )
         else:
             # Typeshed has stubs
             try:
-                typeshed_name_lookup_result = typeshed_client.look_up_name(runtime_term.__module__, runtime_term.__name__)
+                typeshed_name_lookup_result = client.look_up_name(runtime_term.__module__, runtime_term.__name__)
                 assert isinstance(typeshed_name_lookup_result, TypeshedClass)
 
-                typeshed_class_definition = typeshed_client.get_class_definition(typeshed_name_lookup_result)
+                typeshed_class_definition = client.get_class_definition(typeshed_name_lookup_result)
 
                 if '__init__' in typeshed_class_definition.method_name_to_method_list_dict:
                     (
@@ -521,13 +542,14 @@ async def handle_function_call_propagation_task(
                     typeshed_class_definition.type_variable_list
                 )
 
-                await type_ascription_on_function_call(
-                    apparent_argument_node_set_list,
-                    returned_value_node_set,
-                    # Skip the argument passed to `self` or `cls`
-                    parameter_type_annotation_list[1:],
-                    return_value_type_annotation
-                )
+                if switches_singleton.propagate_stdlib_function_calls:
+                    await type_ascription_on_function_call(
+                        apparent_argument_node_set_list,
+                        returned_value_node_set,
+                        # Skip the argument passed to `self` or `cls`
+                        parameter_type_annotation_list[1:],
+                        return_value_type_annotation
+                    )
             except Exception:
                 logging.exception('Cannot lookup constructor for class %s in Typeshed!', runtime_term)
 
@@ -537,11 +559,11 @@ async def handle_function_call_propagation_task(
         if isinstance(runtime_term, UnwrappedRuntimeFunction):
             # Typeshed has stubs
             try:
-                typeshed_name_lookup_result = typeshed_client.look_up_name(runtime_term.__module__,
-                                                                           runtime_term.__name__)
+                typeshed_name_lookup_result = client.look_up_name(runtime_term.__module__,
+                                                                  runtime_term.__name__)
                 assert isinstance(typeshed_name_lookup_result, TypeshedFunction)
 
-                typeshed_function_definition_list = typeshed_client.get_function_definition(
+                typeshed_function_definition_list = client.get_function_definition(
                     typeshed_name_lookup_result)
 
                 (
@@ -632,12 +654,13 @@ async def handle_function_call_propagation_task(
                                         attribute_name
                                     )
                 else:
-                    await type_ascription_on_function_call(
-                        apparent_argument_node_set_list,
-                        returned_value_node_set,
-                        parameter_type_annotation_list,
-                        return_value_type_annotation
-                    )
+                    if switches_singleton.propagate_stdlib_function_calls:
+                        await type_ascription_on_function_call(
+                            apparent_argument_node_set_list,
+                            returned_value_node_set,
+                            parameter_type_annotation_list,
+                            return_value_type_annotation
+                        )
             except Exception:
                 logging.exception('Cannot lookup UnwrappedRuntimeFunction %s in Typeshed!', runtime_term)
         elif isinstance(runtime_term, FunctionDefinition):
@@ -648,21 +671,24 @@ async def handle_function_call_propagation_task(
                 runtime_term
             ]
 
-            for parameter_node, argument_node_set in zip(parameter_list, apparent_argument_node_set_list):
-                await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
-
-            await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
+            if switches_singleton.propagate_user_defined_function_calls:
+                await handle_user_defined_function_call(
+                    parameter_list,
+                    apparent_argument_node_set_list,
+                    symbolic_return_value,
+                    returned_value_node_set
+                )
         else:
             logging.error('Cannot handle function %s!', runtime_term)
     elif isinstance(runtime_term, UnboundMethod):
         if isinstance(runtime_term.function, UnwrappedRuntimeFunction):
             # Typeshed has stubs
             try:
-                typeshed_name_lookup_result = typeshed_client.look_up_name(runtime_term.class_.__module__,
-                                                                           runtime_term.class_.__name__)
+                typeshed_name_lookup_result = client.look_up_name(runtime_term.class_.__module__,
+                                                                  runtime_term.class_.__name__)
                 assert isinstance(typeshed_name_lookup_result, TypeshedClass)
 
-                typeshed_class_definition = typeshed_client.get_class_definition(typeshed_name_lookup_result)
+                typeshed_class_definition = client.get_class_definition(typeshed_name_lookup_result)
 
                 (
                     parameter_type_annotation_list,
@@ -671,12 +697,13 @@ async def handle_function_call_propagation_task(
                     typeshed_class_definition.method_name_to_method_list_dict[runtime_term.function.__name__]
                 )
 
-                await type_ascription_on_function_call(
-                    apparent_argument_node_set_list,
-                    returned_value_node_set,
-                    parameter_type_annotation_list,
-                    return_value_type_annotation
-                )
+                if switches_singleton.propagate_stdlib_function_calls:
+                    await type_ascription_on_function_call(
+                        apparent_argument_node_set_list,
+                        returned_value_node_set,
+                        parameter_type_annotation_list,
+                        return_value_type_annotation
+                    )
             except Exception:
                 logging.exception('Cannot lookup UnboundMethod(%s, %s) in Typeshed!', runtime_term.class_,
                                   runtime_term.function)
@@ -688,10 +715,13 @@ async def handle_function_call_propagation_task(
                 runtime_term.function
             ]
 
-            for parameter_node, argument_node_set in zip(parameter_list, apparent_argument_node_set_list):
-                await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
-
-            await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
+            if switches_singleton.propagate_user_defined_function_calls:
+                await handle_user_defined_function_call(
+                    parameter_list,
+                    apparent_argument_node_set_list,
+                    symbolic_return_value,
+                    returned_value_node_set
+                )
         else:
             logging.error('Cannot handle UnboundMethod %s!', runtime_term)
     elif isinstance(runtime_term, Instance):
@@ -709,19 +739,21 @@ async def handle_function_call_propagation_task(
                     named_function_definition
                 ]
 
-                if parameter_list:
-                    for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
-                        await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
-
-                await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
+                if switches_singleton.propagate_user_defined_function_calls:
+                    await handle_user_defined_function_call(
+                        parameter_list[1:],  # Skip the first parameter (self)
+                        apparent_argument_node_set_list,
+                        symbolic_return_value,
+                        returned_value_node_set
+                    )
             else:
                 # Typeshed has stubs
                 try:
-                    typeshed_name_lookup_result = typeshed_client.look_up_name(runtime_term.class_.__module__,
-                                                                               runtime_term.class_.__name__)
+                    typeshed_name_lookup_result = client.look_up_name(runtime_term.class_.__module__,
+                                                                      runtime_term.class_.__name__)
                     assert isinstance(typeshed_name_lookup_result, TypeshedClass)
 
-                    typeshed_class_definition = typeshed_client.get_class_definition(typeshed_name_lookup_result)
+                    typeshed_class_definition = client.get_class_definition(typeshed_name_lookup_result)
 
                     (
                         parameter_type_annotation_list,
@@ -739,12 +771,13 @@ async def handle_function_call_propagation_task(
                     # The current node corresponds to the (hidden) argument passed to the `self` parameter
                     argument_node_set_list = [{node}] + apparent_argument_node_set_list
 
-                    await type_ascription_on_function_call(
-                        argument_node_set_list,
-                        returned_value_node_set,
-                        parameter_type_annotation_list,
-                        return_value_type_annotation
-                    )
+                    if switches_singleton.propagate_stdlib_function_calls:
+                        await type_ascription_on_function_call(
+                            argument_node_set_list,
+                            returned_value_node_set,
+                            parameter_type_annotation_list,
+                            return_value_type_annotation
+                        )
                 except Exception:
                     logging.exception('Cannot lookup `__call__` for class %s in Typeshed!', runtime_term.class_)
         else:
@@ -768,11 +801,11 @@ async def handle_function_call_propagation_task(
         if isinstance(runtime_term.function, UnwrappedRuntimeFunction):
             # Typeshed has stubs
             try:
-                typeshed_name_lookup_result = typeshed_client.look_up_name(runtime_term.instance.class_.__module__,
-                                                                           runtime_term.instance.class_.__name__)
+                typeshed_name_lookup_result = client.look_up_name(runtime_term.instance.class_.__module__,
+                                                                  runtime_term.instance.class_.__name__)
                 assert isinstance(typeshed_name_lookup_result, TypeshedClass)
 
-                typeshed_class_definition = typeshed_client.get_class_definition(typeshed_name_lookup_result)
+                typeshed_class_definition = client.get_class_definition(typeshed_name_lookup_result)
 
                 (
                     parameter_type_annotation_list,
@@ -789,14 +822,15 @@ async def handle_function_call_propagation_task(
 
                 argument_node_set_list = [self_parameter_argument_node_set] + apparent_argument_node_set_list
 
-                await type_ascription_on_function_call(
-                    argument_node_set_list,
-                    returned_value_node_set,
-                    parameter_type_annotation_list,
-                    return_value_type_annotation
-                )
+                if switches_singleton.propagate_stdlib_function_calls:
+                    await type_ascription_on_function_call(
+                        argument_node_set_list,
+                        returned_value_node_set,
+                        parameter_type_annotation_list,
+                        return_value_type_annotation
+                    )
             except Exception:
-                logging.exception('Cannot lookup %s in Typeshed!',runtime_term)
+                logging.exception('Cannot lookup %s in Typeshed!', runtime_term)
         elif isinstance(runtime_term.function, FunctionDefinition):
             (
                 parameter_list,
@@ -805,11 +839,13 @@ async def handle_function_call_propagation_task(
                 runtime_term.function
             ]
 
-            if parameter_list:
-                for parameter_node, argument_node_set in zip(parameter_list[1:], apparent_argument_node_set_list):
-                    await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
-
-            await handle_matching_return_value_with_returned_value(symbolic_return_value, returned_value_node_set)
+            if switches_singleton.propagate_user_defined_function_calls:
+                await handle_user_defined_function_call(
+                    parameter_list[1:],  # Skip the first parameter (self)
+                    apparent_argument_node_set_list,
+                    symbolic_return_value,
+                    returned_value_node_set
+                )
         else:
             logging.error('Cannot handle BoundMethod %s!', runtime_term)
 
@@ -851,7 +887,7 @@ async def type_ascription_on_function_call(
 
         typeshed_class_definition: TypeshedClassDefinition | None = None
         try:
-            typeshed_class_definition = typeshed_client.get_class_definition(typeshed_class)
+            typeshed_class_definition = client.get_class_definition(typeshed_class)
         except:
             logging.exception(
                 'Cannot retrieve Typeshed class definition for %s!', typeshed_class)
@@ -894,6 +930,21 @@ async def type_ascription_on_function_call(
         typeshed_type_variable_ascription_callback,
         typeshed_class_ascription_callback
     )
+
+
+async def handle_user_defined_function_call(
+        parameter_list: typing.Sequence[ast.arg],
+        argument_node_set_list: typing.Sequence[typing.Set[_ast.AST]],
+        return_value_node: typing.Optional[_ast.AST] = None,
+        returned_value_node_set: typing.Optional[typing.Set[_ast.AST]] = None
+):
+    # Handle parameter propagation.
+    for parameter_node, argument_node_set in zip(parameter_list, argument_node_set_list):
+        await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+
+    # Handle return value propagation.
+    if return_value_node is not None and returned_value_node_set is not None:
+        await handle_matching_return_value_with_returned_value(return_value_node, returned_value_node_set)
 
 
 async def handle_matching_parameter_with_argument(
@@ -1004,22 +1055,27 @@ async def set_equivalent(node_set: typing.AbstractSet[_ast.AST], propagate_runti
 
                 if runtime_term_sharing_node_disjoint_set_union_happened:
                     # Runtime term sets
-                    runtime_term_sharing_target_equivalent_set_runtime_term_set = runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
-                        runtime_term_sharing_target_equivalent_set_top_node
-                    ]
-                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set = runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
-                        runtime_term_sharing_acquirer_equivalent_set_top_node
-                    ]
+                    runtime_term_sharing_target_equivalent_set_runtime_term_set = \
+                        runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                            runtime_term_sharing_target_equivalent_set_top_node
+                        ]
+                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set = \
+                        runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                            runtime_term_sharing_acquirer_equivalent_set_top_node
+                        ]
 
                     runtime_term_sharing_target_equivalent_set_runtime_term_set_delta = runtime_term_sharing_acquirer_equivalent_set_runtime_term_set - runtime_term_sharing_target_equivalent_set_runtime_term_set
                     runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta = runtime_term_sharing_target_equivalent_set_runtime_term_set - runtime_term_sharing_acquirer_equivalent_set_runtime_term_set
 
-                    del runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[runtime_term_sharing_target_equivalent_set_top_node]
-                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set.update(runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta)
+                    del runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                        runtime_term_sharing_target_equivalent_set_top_node]
+                    runtime_term_sharing_acquirer_equivalent_set_runtime_term_set.update(
+                        runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta)
 
         # Propagate induced equivalent node sets
-        for induced_equivalence_node_set in induced_equivalent_node_set_list:
-            await set_equivalent(induced_equivalence_node_set, propagate_runtime_terms=False)
+        if switches_singleton.resolve_induced_equivalent_relations:
+            for induced_equivalence_node_set in induced_equivalent_node_set_list:
+                await set_equivalent(induced_equivalence_node_set, propagate_runtime_terms=False)
 
         # Propagate runtime terms
         if propagate_runtime_terms:

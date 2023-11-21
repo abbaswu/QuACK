@@ -5,9 +5,7 @@ from typing import Callable, Iterable
 from lark import Lark, Token, Tree
 from ordered_set import OrderedSet
 
-from type_inference_class import TypeInferenceClass
-from type_inference_result import TypeInferenceResult
-
+from type_inference_result import TypeInferenceResult, TypeInferenceClass
 
 names_of_classes_in_builtins_to_type_inference_classes: dict[str, TypeInferenceClass] = {
     v.__name__: TypeInferenceClass(v.__module__, v.__name__)

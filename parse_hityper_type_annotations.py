@@ -9,8 +9,7 @@ from lark import Lark, Token, Tree
 
 from static_import_analysis import do_static_import_analysis
 
-from type_inference_class import TypeInferenceClass
-from type_inference_result import TypeInferenceResult
+from type_inference_result import TypeInferenceResult, TypeInferenceClass
 
 builtin_class_names: set[str] = {k for k, v in builtins.__dict__.items() if isinstance(v, type)}
 

@@ -6,14 +6,14 @@ import logging
 import typing
 from collections import defaultdict
 
-import debugging
-from definitions_to_runtime_terms_mappings import top_level_class_definitions_to_runtime_classes, unwrapped_runtime_functions_to_named_function_definitions
+import debugging_singleton
+from definitions_to_runtime_terms_mappings_singleton import top_level_class_definitions_to_runtime_classes, unwrapped_runtime_functions_to_named_function_definitions
 from get_dict_for_runtime_class import get_dict_for_runtime_class
 from get_parameters import get_parameters
-from module_names_to_imported_names_to_runtime_objects import module_names_to_imported_names_to_runtime_objects
-from parameter_lists_and_symbolic_return_values import nodes_to_parameter_lists_and_symbolic_return_values
+from module_names_to_imported_names_to_runtime_objects_singleton import module_names_to_imported_names_to_runtime_objects
+from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_and_symbolic_return_values
 from relations import NonEquivalenceRelationType
-from resolve_typing_constraints import create_new_node, add_runtime_terms, set_node_to_be_instance_of, set_equivalent, \
+from typing_constraints_singleton import create_new_node, add_runtime_terms, set_node_to_be_instance_of, set_equivalent, \
     add_relation, create_related_node, update_attributes, \
     add_argument_of_returned_value_of_relations
 from runtime_term import *
@@ -58,7 +58,7 @@ async def collect_and_resolve_typing_constraints(
         module_names_to_module_nodes: typing.Mapping[str, ast.Module]
 ):
     """
-    Collect preliminary typing constraints based on the semantics of each AST node.
+    Collect and resolve typing constraints based on the semantics of each AST node.
     """
     # --------------------------------------------------------------------------------------------- #
     # For the unwrapped runtime functions and runtime classes,

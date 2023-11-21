@@ -1,3 +1,8 @@
+"""
+NOTE: This module is intended to be used as a singleton.
+Initialize it by calling get_parameter_lists_and_symbolic_return_values() once.
+"""
+
 import _ast
 import ast
 import typing

@@ -1,7 +1,7 @@
 import _ast
 import argparse
 import ast
-import readline
+import asyncio
 import importlib
 import json
 import os
@@ -10,27 +10,24 @@ import typing
 from collections import Counter
 from types import ModuleType
 
+import definitions_to_runtime_terms_mappings_singleton
+import module_names_to_imported_names_to_runtime_objects_singleton
+import parameter_lists_and_symbolic_return_values_singleton
 import static_import_analysis
+import switches_singleton
+import typing_constraints_singleton
 from build_ast_node_namespace_trie import build_ast_node_namespace_trie
 from class_query_database import ClassQueryDatabase
-from collect_preliminary_typing_constraints import collect_and_resolve_typing_constraints
-from definitions_to_runtime_terms_mappings import get_definitions_to_runtime_terms_mappings
-from module_names_to_imported_names_to_runtime_objects import \
-    get_module_names_to_imported_names_to_runtime_objects
-from parameter_lists_and_symbolic_return_values import get_parameter_lists_and_symbolic_return_values, \
-    nodes_to_parameter_lists_and_symbolic_return_values
+from collect_and_resolve_typing_constraints import collect_and_resolve_typing_constraints
 from query_result_dict import *
-from relations import NonEquivalenceRelationGraph, EquivalenceRelationGraph
-from resolve_typing_constraints import node_disjoint_set, \
-    equivalent_set_top_node_non_equivalence_relation_graph, nodes_to_attribute_counters, \
-    node_non_equivalence_relation_graph, runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets, \
-    runtime_term_sharing_node_disjoint_set
+from relations import NonEquivalenceRelationGraph
 from runtime_term import RuntimeTerm
 from trie import search
 from type_inference import TypeInference
-from typeshed_client_ex.client import Client
-from typeshed_client_ex.type_definitions import TypeshedClass, from_runtime_class
-import asyncio
+from typing_constraints_singleton import node_disjoint_set, \
+    equivalent_set_top_node_non_equivalence_relation_graph, nodes_to_attribute_counters, \
+    node_non_equivalence_relation_graph, runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets, \
+    runtime_term_sharing_node_disjoint_set
 
 
 def get_indentation(indent_level: int = 0) -> str:
@@ -170,7 +167,7 @@ def contains_return_statement(function_node: typing.Union[ast.FunctionDef, ast.A
 
 def main():
     sys.setrecursionlimit(65536)
-    
+
     # Set up logging
     # https://stackoverflow.com/questions/10973362/python-logging-function-name-file-name-line-number-using-a-single-file
     FORMAT = '[%(asctime)s %(filename)s %(funcName)s():%(lineno)s]%(levelname)s: %(message)s'
@@ -187,6 +184,10 @@ def main():
                         help='Output JSON file')
     parser.add_argument('-i', '--interactive', action='store_true', required=False, default=False,
                         help='Interactive mode')
+    parser.add_argument('--no-induced-equivalent-relation-resolution', action='store_true', required=False)
+    parser.add_argument('--no-attribute-access-propagation', action='store_true', required=False)
+    parser.add_argument('--no-stdlib-function-call-propagation', action='store_true', required=False)
+    parser.add_argument('--no-user-defined-function-call-propagation', action='store_true', required=False)
     args = parser.parse_args()
 
     module_search_absolute_path: str = os.path.abspath(args.module_search_path)
@@ -194,8 +195,18 @@ def main():
     output_file: str = args.output_file
     is_interactive: bool = args.interactive
 
-    # Initialize Typeshed client
-    client: Client = Client()
+    # Set switches
+    if args.no_induced_equivalent_relation_resolution:
+        switches_singleton.resolve_induced_equivalent_relations = False
+
+    if args.no_attribute_access_propagation:
+        switches_singleton.propagate_attribute_accesses = False
+
+    if args.no_stdlib_function_call_propagation:
+        switches_singleton.propagate_stdlib_function_calls = False
+
+    if args.no_user_defined_function_call_propagation:
+        switches_singleton.propagate_user_defined_function_calls = False
 
     # Find modules
     (
@@ -220,22 +231,22 @@ def main():
     module_list = list(module_name_to_module.values())
     module_node_list = [module_name_to_module_node_dict[module_name] for module_name in module_name_to_module]
 
-    get_parameter_lists_and_symbolic_return_values(module_node_list)
-
     ast_node_namespace_trie_root = build_ast_node_namespace_trie(
         module_name_list,
         module_node_list
     )
 
-    import debugging
+    parameter_lists_and_symbolic_return_values_singleton.get_parameter_lists_and_symbolic_return_values(
+        module_node_list
+    )
 
-    get_definitions_to_runtime_terms_mappings(
+    definitions_to_runtime_terms_mappings_singleton.get_definitions_to_runtime_terms_mappings(
         module_name_list,
         module_list,
         module_node_list
     )
 
-    get_module_names_to_imported_names_to_runtime_objects(
+    module_names_to_imported_names_to_runtime_objects_singleton.get_module_names_to_imported_names_to_runtime_objects(
         module_name_to_import_tuple_set_dict,
         module_name_to_import_from_tuple_set_dict,
         sys.modules
@@ -264,7 +275,7 @@ def main():
 
     class_query_database = ClassQueryDatabase(
         module_set,
-        client
+        typing_constraints_singleton.client
     )
 
     # Initialize type inference
@@ -280,7 +291,7 @@ def main():
         runtime_term_sharing_node_disjoint_set,
         runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets,
         class_query_database,
-        client
+        typing_constraints_singleton.client
     )
 
     # Run type inference
@@ -376,7 +387,8 @@ def main():
                 for function_node in function_node_set:
                     function_name = function_node.name
 
-                    parameter_list, symbolic_return_value = nodes_to_parameter_lists_and_symbolic_return_values[
+                    parameter_list, symbolic_return_value = \
+                    parameter_lists_and_symbolic_return_values_singleton.nodes_to_parameter_lists_and_symbolic_return_values[
                         function_node
                     ]
 
@@ -387,7 +399,7 @@ def main():
                     # Contain return statements.
                     if (
                             not (class_name != 'global' and function_name in ('__init__', '__new__'))
-                        and contains_return_statement(function_node)
+                            and contains_return_statement(function_node)
                     ):
                         parameter_names_to_parameter_nodes['return'] = symbolic_return_value
 

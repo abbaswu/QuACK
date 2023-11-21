@@ -10,7 +10,7 @@ import sys
 
 import static_import_analysis
 
-from module_names_to_imported_names_to_runtime_objects import get_module_names_to_imported_names_to_runtime_objects
+from module_names_to_imported_names_to_runtime_objects_singleton import get_module_names_to_imported_names_to_runtime_objects
 
 
 if __name__ == '__main__':
