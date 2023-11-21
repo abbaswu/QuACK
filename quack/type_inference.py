@@ -35,6 +35,7 @@ def dump_confidence_and_possible_class_list(
     ]
 
     json.dump(confidence_and_possible_class_string_list_list, class_inference_log_file_io)
+    class_inference_log_file_io.write('\n')
 
 
 class TypeInference:
