@@ -131,6 +131,42 @@ case "$method" in
 
         PYTHONPATH="$module_search_path" /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
         ;;
+    quack-no-induced-equivalent-relation-resolution)
+        output_file="$module_search_path/output_file.json"
+        
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
+
+        PYTHONPATH="$module_search_path" /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --no-induced-equivalent-relation-resolution --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
+        ;;
+    quack-no-attribute-access-propagation)
+        output_file="$module_search_path/output_file.json"
+        
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
+
+        PYTHONPATH="$module_search_path" /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --no-attribute-access-propagation --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
+        ;;
+    quack-no-stdlib-function-call-propagation)
+        output_file="$module_search_path/output_file.json"
+        
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
+
+        PYTHONPATH="$module_search_path" /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --no-stdlib-function-call-propagation --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
+        ;;
+    quack-no-user-defined-function-call-propagation)
+        output_file="$module_search_path/output_file.json"
+        
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
+
+        PYTHONPATH="$module_search_path" /usr/bin/time -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' -o "$time_output_file_path" conda run --no-capture-output --name quack python3 "$(pwd)/quack/main.py" --no-user-defined-function-call-propagation --module-search-path "$module_search_path" --module-prefix "$module_prefix" --output-file "$output_file_path"
+        ;;
     stray)
         if [ -f "${module_search_path}/requirements.txt" ]; then
             conda run --no-capture-output --name stray pip install -r "${module_search_path}/requirements.txt" 1>&2

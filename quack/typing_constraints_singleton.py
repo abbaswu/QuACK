@@ -317,19 +317,12 @@ async def add_propagation_task(
             add = True
 
     if add:
-        if (
-                isinstance(propagation_task, AttributeAccessPropagationTask)
-                and switches_singleton.propagate_attribute_accesses
-        ):
-            await handle_attribute_access_propagation_task(node, propagation_task)
-        elif (
-                isinstance(propagation_task, FunctionCallPropagationTask)
-                and (
-                        switches_singleton.propagate_stdlib_function_calls
-                        or switches_singleton.propagate_user_defined_function_calls
-                )
-        ):
-            await handle_function_call_propagation_task(node, propagation_task)
+        if isinstance(propagation_task, AttributeAccessPropagationTask):
+            if switches_singleton.propagate_attribute_accesses:
+                await handle_attribute_access_propagation_task(node, propagation_task)
+        elif isinstance(propagation_task, FunctionCallPropagationTask):
+            if switches_singleton.propagate_user_defined_function_calls:
+                await handle_function_call_propagation_task(node, propagation_task)
         else:
             raise TypeError(f'Unknown propagation task type {type(propagation_task)}!')
 

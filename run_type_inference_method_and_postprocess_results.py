@@ -78,8 +78,7 @@ def run_type_inference_method_and_postprocess_results(
             'hityper': parse_hityper_type_annotations.get_type_annotation_parser(
                 module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
                 module_name_to_import_from_tuple_set_dict
-            ),
-            'quack': lambda module_name, type_annotation_string: parse(type_annotation_string)
+            )
         }
 
         with open(time_temporary_file_path, 'r') as fp:
@@ -87,5 +86,8 @@ def run_type_inference_method_and_postprocess_results(
 
         return result_dict_from_raw_result_dict(
             raw_result_dict,
-            method_to_type_annotation_parser_dict[method]
+            method_to_type_annotation_parser_dict.get(
+                method,
+                lambda module_name, type_annotation_string: parse(type_annotation_string)
+            )
         ), time_output
