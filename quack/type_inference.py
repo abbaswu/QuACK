@@ -2,6 +2,7 @@ import _ast
 import ast
 import asyncio
 import itertools
+import json
 import logging
 import typing
 
@@ -22,6 +23,18 @@ from typeshed_client_ex.client import Client
 
 from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, TypeshedClass, from_runtime_class, \
     TypeshedTypeVariable, subscribe, replace_type_variables_in_type_annotation, Subscription
+
+
+def dump_confidence_and_possible_class_list(
+    confidence_and_possible_class_list: list[tuple[float, TypeshedClass]],
+    class_inference_log_file_io: typing.IO
+):
+    confidence_and_possible_class_string_list_list: list[list[float, str]] = [
+        [confidence, str(possible_class)]
+        for confidence, possible_class in confidence_and_possible_class_list
+    ]
+
+    json.dump(confidence_and_possible_class_string_list_list, class_inference_log_file_io)
 
 
 class TypeInference:
@@ -133,7 +146,7 @@ class TypeInference:
 
             for i in argsort[-1::-1]:
                 possible_class = selected_possible_class_ndarray[i]
-                cosine_similarity = selected_cosine_similarity_ndarray[i]
+                cosine_similarity = float(selected_cosine_similarity_ndarray[i])
 
                 confidence_and_possible_class_list.append(
                     (cosine_similarity, possible_class)
@@ -160,7 +173,8 @@ class TypeInference:
             depth_limit: int = 3,
             first_level_class_inference_failed_fallback: TypeshedClass = TypeshedClass('typing', 'Any'),
             non_first_level_class_inference_failed_fallback: TypeshedClass = TypeshedClass('typing', 'Any'),
-            class_inference_callback: typing.Optional[typing.Callable[[frozenset[ast.AST], int], None]] = None
+            pre_class_inference_callback: typing.Optional[typing.Callable[[frozenset[ast.AST], int], None]] = None,
+            class_inference_log_file_io: typing.Optional[typing.IO] = None
     ) -> TypeshedTypeAnnotation:
         indent = '    ' * depth
 
@@ -198,8 +212,8 @@ class TypeInference:
                     equivalent_node_disjoint_set_top_nodes
                 )
 
-                if class_inference_callback is not None:
-                    class_inference_callback(equivalent_node_disjoint_set_top_nodes, depth + 1)
+                if pre_class_inference_callback is not None:
+                    pre_class_inference_callback(equivalent_node_disjoint_set_top_nodes, depth + 1)
 
                 (
                     confidence_and_possible_class_list,
@@ -209,6 +223,12 @@ class TypeInference:
                     depth + 1,
                     cosine_similarity_threshold
                 )
+
+                if class_inference_log_file_io is not None:
+                    dump_confidence_and_possible_class_list(
+                        confidence_and_possible_class_list,
+                        class_inference_log_file_io
+                    )
 
                 # Part 2: Infer type variables for possible classes to get final type inference results.
                 if not confidence_and_possible_class_list:
@@ -347,7 +367,7 @@ class TypeInference:
                             depth_limit,
                             first_level_class_inference_failed_fallback,
                             non_first_level_class_inference_failed_fallback,
-                            class_inference_callback
+                            pre_class_inference_callback
                         )
 
                         type_inference_result = subscribe(
@@ -375,7 +395,7 @@ class TypeInference:
                                 depth_limit,
                                 first_level_class_inference_failed_fallback,
                                 non_first_level_class_inference_failed_fallback,
-                                class_inference_callback
+                                pre_class_inference_callback
                             )
 
                             type_variables_to_type_inference_results[type_variable] = top_inference_result
