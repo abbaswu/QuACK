@@ -12,6 +12,7 @@ from types import ModuleType
 from numpy import ndarray, zeros, fromiter
 from scipy.spatial.distance import cosine
 
+import switches_singleton
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
 from get_types_in_module import get_types_in_module
 from inheritance_graph import construct_inheritance_graph, iterate_inheritance_graph
@@ -219,10 +220,11 @@ class ClassQueryDatabase:
         tf_idf_ndarray = zeros(self.number_of_attributes)
         number_of_attributes: int = 0
         for attribute, count in attribute_counter.items():
+            tf = count
             try:
                 index = self.attribute_to_index_dict[attribute]
                 idf = self.attribute_to_idf_dict[attribute]
-                tf_idf_ndarray[index] = count * idf
+                tf_idf_ndarray[index] = tf * idf
                 number_of_attributes += 1
             except KeyError:
                 logging.warning('Skipped attribute: %s', attribute)

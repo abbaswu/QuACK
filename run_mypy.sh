@@ -81,7 +81,7 @@ fi
 
 if ! [ -d "$module_search_path" ]
 then
-    echo "Module search path `$module_search_path` is not a directory!" >&2
+    echo "Module search path ${module_search_path} is not a directory!" >&2
     exit 1
 fi
 
@@ -94,7 +94,7 @@ fi
 current_working_directory="$(pwd)"
 
 # Enter module search path
-cd "$module_search_path"
+cd "$module_search_path" || exit 1
 
 # Build mypy module option string
 # Before (module_list): '["1", "2", "3"]'
@@ -103,9 +103,9 @@ cd "$module_search_path"
 mypy_module_option_string="$(build_mypy_module_option_string "$module_list")"
 
 # Run mypy
-mypy_command="conda run --no-capture-output --name mypy mypy $mypy_module_option_string"
+mypy_command="conda run --no-capture-output --name mypy mypy --check-untyped-defs --show-error-context $mypy_module_option_string"
 
 eval "$mypy_command"
 
 # Exit module search path
-cd "$current_working_directory"
+cd "$current_working_directory" || exit 1

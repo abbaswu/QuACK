@@ -7,11 +7,13 @@ import typing
 from collections import defaultdict
 
 import debugging_singleton
+import switches_singleton
 from definitions_to_runtime_terms_mappings_singleton import top_level_class_definitions_to_runtime_classes, unwrapped_runtime_functions_to_named_function_definitions
+from get_attributes_in_runtime_class import get_non_dynamic_attributes_in_runtime_class
 from get_dict_for_runtime_class import get_dict_for_runtime_class
 from get_parameters import get_parameters
 from module_names_to_imported_names_to_runtime_objects_singleton import module_names_to_imported_names_to_runtime_objects
-from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_and_symbolic_return_values
+from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values
 from relations import NonEquivalenceRelationType
 from typing_constraints_singleton import create_new_node, add_runtime_terms, set_node_to_be_instance_of, set_equivalent, \
     add_relation, create_related_node, update_attributes, \
@@ -138,6 +140,42 @@ async def collect_and_resolve_typing_constraints(
         await AsyncScopedNodeVisitor(update_runtime_term_sets_callback).visit(module_node)
 
     # --------------------------------------------------------------------------------------------- #
+    # Set the default values of parameters to be equivalent to the corresponding type variables.
+    async def handle_parameter_default_values_callback(
+            scope_stack: list[NodeProvidingScope],
+            class_stack: list[ast.ClassDef],
+            node: _ast.AST
+    ):
+        # ast.FunctionDef(name, args, body, decorator_list, returns, type_comment)
+        # ast.AsyncFunctionDef(name, args, body, decorator_list, returns, type_comment)
+        # ast.Lambda(args, body)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            # Get the parameter list of the current function.
+            posargs, _, kwonlyargs, _ = get_parameters(node)
+
+            # N posargs_defaults align with the *last* N posargs
+            # N kw_defaults align with N kwonlyargs (though they may be None's)
+            posargs_defaults = node.args.defaults
+            kwonlyargs_defaults = node.args.kw_defaults
+
+            for posarg, posarg_default in zip(
+                reversed(posargs),
+                reversed(posargs_defaults)
+            ):
+                await set_equivalent({posarg, posarg_default})
+
+            for kwonlyarg, kwonlyarg_default in zip(
+                kwonlyargs,
+                kwonlyargs_defaults
+            ):
+                if kwonlyarg_default is not None:
+                    await set_equivalent({kwonlyarg, kwonlyarg_default})
+
+    if switches_singleton.handle_parameter_default_values:
+        for module_name, module_node in module_names_to_module_nodes.items():
+            await AsyncScopedNodeVisitor(handle_parameter_default_values_callback).visit(module_node)
+
+    # --------------------------------------------------------------------------------------------- #
     # Collect return value information for functions.
     # Resolve the (real) return value sets of nodes providing scope.
     nodes_providing_scope_to_apparent_return_value_sets: dict[NodeProvidingScope, set[ast.AST]] = dict()
@@ -218,10 +256,10 @@ async def collect_and_resolve_typing_constraints(
         nodes_providing_scope_to_apparent_return_value_sets.keys(),
         nodes_providing_scope_to_yield_value_sets.keys(),
         nodes_providing_scope_to_send_value_sets.keys()
-    ) & nodes_to_parameter_lists_and_symbolic_return_values.keys()
+    ) & nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values.keys()
 
     for node_providing_scope in nodes_providing_scope_set:
-        _, symbolic_return_value = nodes_to_parameter_lists_and_symbolic_return_values[node_providing_scope]
+        _, _, symbolic_return_value = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[node_providing_scope]
 
         apparent_return_value_set = nodes_providing_scope_to_apparent_return_value_sets[node_providing_scope]
         yield_value_set = nodes_providing_scope_to_yield_value_sets[node_providing_scope]
@@ -304,8 +342,9 @@ async def collect_and_resolve_typing_constraints(
 
                 (
                     parameter_list,
+                    parameter_name_to_parameter_mappings,
                     symbolic_return_value
-                ) = nodes_to_parameter_lists_and_symbolic_return_values[function_definition]
+                ) = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[function_definition]
 
                 if parameter_list:
                     first_parameter: ast.arg = parameter_list[0]
@@ -321,6 +360,7 @@ async def collect_and_resolve_typing_constraints(
 
         await set_equivalent(first_parameter_of_classmethods)
         for first_parameter_of_classmethod in first_parameter_of_classmethods:
+            await update_attributes(first_parameter_of_classmethod, get_non_dynamic_attributes_in_runtime_class(runtime_class))
             await add_runtime_terms(first_parameter_of_classmethod, {runtime_class})
 
     # --------------------------------------------------------------------------------------------- #
@@ -688,6 +728,9 @@ async def collect_and_resolve_typing_constraints(
                     node,
                     node.operand
                 })
+            else:
+                # Set the current type variable as equivalent to `bool`.
+                await set_node_to_be_instance_of(node, bool)
 
         # ast.BinOp(left, op, right)
         if isinstance(node, ast.BinOp):
@@ -725,8 +768,8 @@ async def collect_and_resolve_typing_constraints(
                     # Set the type variable of `left` as $IterTargetOf$ the type variable of `right`.
                     await add_relation(right, left, NonEquivalenceRelationType.IterTargetOf)
 
-            # Set the current type variable as equivalent to `bool`.
-            await set_node_to_be_instance_of(node, bool)
+                    # Set the current type variable as equivalent to `bool`.
+                    await set_node_to_be_instance_of(node, bool)
 
         # ast.Call(func, args, keywords, starargs, kwargs)
         if isinstance(node, ast.Call):

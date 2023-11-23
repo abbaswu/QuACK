@@ -20,7 +20,7 @@ from disjoint_set import DisjointSet
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
 from get_dict_for_runtime_class import get_comprehensive_dict_for_runtime_class
 from get_unwrapped_constructor import get_unwrapped_constructor
-from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_and_symbolic_return_values
+from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values
 from propagation_task_generation import generate_propagation_tasks, PropagationTask, AttributeAccessPropagationTask, \
     FunctionCallPropagationTask
 from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationType
@@ -164,9 +164,8 @@ async def add_relation(
             induced_equivalent_set = set()
 
     if (
-            relation_type not in (NonEquivalenceRelationType.ArgumentOf, NonEquivalenceRelationType.ReturnedValueOf)
+            relation_type in switches_singleton.valid_relations_to_induce_equivalent_relations
             and induced_equivalent_set
-            and switches_singleton.resolve_induced_equivalent_relations
     ):
         await set_equivalent(induced_equivalent_set, propagate_runtime_terms=False)
 
@@ -345,6 +344,7 @@ async def handle_attribute_access_propagation_task(
 
     # Get attribute access result.
     attribute_access_result: typing.Optional[RuntimeTerm] = None
+    instance_attribute_access_runtime_class: typing.Optional[RuntimeClass] = None
 
     if isinstance(runtime_term, Module):
         runtime_term_dict = runtime_term.__dict__
@@ -353,8 +353,10 @@ async def handle_attribute_access_propagation_task(
             unwrapped_attribute = unwrap(attribute)
 
             # Module -> Module
+            if isinstance(unwrapped_attribute, Module):
+                attribute_access_result = unwrapped_attribute
             # Module -> Class
-            if isinstance(unwrapped_attribute, (Module, RuntimeClass)):
+            elif isinstance(unwrapped_attribute, RuntimeClass):
                 attribute_access_result = unwrapped_attribute
             # Module -> Function
             elif isinstance(unwrapped_attribute, UnwrappedRuntimeFunction):
@@ -364,11 +366,9 @@ async def handle_attribute_access_propagation_task(
                         unwrapped_attribute]
                 else:
                     attribute_access_result = unwrapped_attribute
-            else:
-                logging.error(
-                    'Cannot propagate accessing attribute `%s` on `%s` (%s)!',
-                    attribute_name,
-                    runtime_term, unwrapped_attribute)
+            # Module -> Instance
+            elif not callable(unwrapped_attribute):
+                instance_attribute_access_runtime_class = type(unwrapped_attribute)
         else:
             logging.error('Cannot statically get attribute `%s` on module %s!', attribute_name, runtime_term)
     elif isinstance(runtime_term, RuntimeClass):
@@ -390,10 +390,9 @@ async def handle_attribute_access_propagation_task(
                         runtime_term,
                         unwrapped_attribute
                     )
-            else:
-                logging.error('Cannot propagate accessing attribute `%s` on class %s (%s) - it is not a method!',
-                              attribute_name,
-                              runtime_term, unwrapped_attribute)
+            # Class -> Instance
+            elif not callable(unwrapped_attribute):
+                instance_attribute_access_runtime_class = type(unwrapped_attribute)
         else:
             logging.error('Cannot statically get attribute `%s` on class %s!', attribute_name, runtime_term)
     elif isinstance(runtime_term, Instance):
@@ -430,10 +429,9 @@ async def handle_attribute_access_propagation_task(
                             runtime_term,
                             unwrapped_attribute
                         )
-            else:
-                logging.error('Cannot propagate accessing attribute `%s` on class %s (%s) - it is not a method!',
-                              attribute_name,
-                              runtime_term.class_, unwrapped_attribute)
+            # Class -> Instance
+            elif not callable(unwrapped_attribute):
+                instance_attribute_access_runtime_class = type(unwrapped_attribute)
         else:
             logging.error('Cannot statically get attribute `%s` on class %s!', attribute_name, runtime_term.class_)
 
@@ -441,6 +439,10 @@ async def handle_attribute_access_propagation_task(
     if target_node_set and attribute_access_result is not None:
         for target_node in target_node_set:
             await add_runtime_terms(target_node, {attribute_access_result})
+
+    if switches_singleton.propagate_instance_attribute_accesses and instance_attribute_access_runtime_class is not None:
+        for target_node in target_node_set:
+            await set_node_to_be_instance_of(target_node, instance_attribute_access_runtime_class)
 
 
 async def get_apparent_argument_node_set_list_and_returned_value_node_set(
@@ -463,6 +465,12 @@ async def get_apparent_argument_node_set_list_and_returned_value_node_set(
         if isinstance(parameter, int)
     }
 
+    argument_names: set[str] = {
+        parameter
+        for parameter in argument_of_out_edges
+        if isinstance(parameter, str)
+    }
+
     apparent_argument_node_set_list: list[set[_ast.AST]] = []
 
     if argument_indices:
@@ -472,7 +480,11 @@ async def get_apparent_argument_node_set_list_and_returned_value_node_set(
                 argument_of_out_edges.get(i, set())
             )
 
-    return apparent_argument_node_set_list, returned_value_of_out_edges
+    argument_name_to_argument_node_set_dict: dict[str, set[_ast.AST]] = dict()
+    for argument_name in argument_names:
+        argument_name_to_argument_node_set_dict[argument_name] = argument_of_out_edges.get(argument_name, set())
+
+    return apparent_argument_node_set_list, argument_name_to_argument_node_set_dict, returned_value_of_out_edges
 
 
 async def handle_function_call_propagation_task(
@@ -483,6 +495,7 @@ async def handle_function_call_propagation_task(
 
     (
         apparent_argument_node_set_list,
+        argument_name_to_argument_node_set_dict,
         returned_value_node_set
     ) = await get_apparent_argument_node_set_list_and_returned_value_node_set(node)
 
@@ -497,15 +510,18 @@ async def handle_function_call_propagation_task(
 
             (
                 parameter_list,
+                parameter_name_to_parameter_mapping,
                 symbolic_return_value
-            ) = nodes_to_parameter_lists_and_symbolic_return_values[
+            ) = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
                 named_function_definition
             ]
 
             if switches_singleton.propagate_user_defined_function_calls:
                 await handle_user_defined_function_call(
                     parameter_list[1:],  # Skip the first parameter (self or cls)
-                    apparent_argument_node_set_list
+                    apparent_argument_node_set_list,
+                    parameter_name_to_parameter_mapping,
+                    argument_name_to_argument_node_set_dict,
                 )
         else:
             # Typeshed has stubs
@@ -541,7 +557,7 @@ async def handle_function_call_propagation_task(
                         returned_value_node_set,
                         # Skip the argument passed to `self` or `cls`
                         parameter_type_annotation_list[1:],
-                        return_value_type_annotation
+                        return_value_type_annotation,
                     )
             except Exception:
                 logging.exception('Cannot lookup constructor for class %s in Typeshed!', runtime_term)
@@ -603,9 +619,10 @@ async def handle_function_call_propagation_task(
                     # Only support name being literal strings.
                     attribute_names: set[str] = set()
                     for name_node in apparent_argument_node_set_list[1]:
-                        if isinstance(name_node, ast.Constant):
-                            if isinstance(name_node.value, str):
-                                attribute_names.add(name_node.value)
+                        if isinstance(name_node, ast.Constant) and isinstance(name_node.value, str):
+                            attribute_names.add(name_node.value)
+                        else:
+                            await set_node_to_be_instance_of(name_node, str)
 
                     for object_node in apparent_argument_node_set_list[0]:
                         await update_attributes(object_node, attribute_names, 1 / len(attribute_names))
@@ -659,8 +676,9 @@ async def handle_function_call_propagation_task(
         elif isinstance(runtime_term, FunctionDefinition):
             (
                 parameter_list,
+                parameter_name_to_parameter_mapping,
                 symbolic_return_value
-            ) = nodes_to_parameter_lists_and_symbolic_return_values[
+            ) = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
                 runtime_term
             ]
 
@@ -668,8 +686,10 @@ async def handle_function_call_propagation_task(
                 await handle_user_defined_function_call(
                     parameter_list,
                     apparent_argument_node_set_list,
+                    parameter_name_to_parameter_mapping,
+                    argument_name_to_argument_node_set_dict,
                     symbolic_return_value,
-                    returned_value_node_set
+                    returned_value_node_set,
                 )
         else:
             logging.error('Cannot handle function %s!', runtime_term)
@@ -703,8 +723,9 @@ async def handle_function_call_propagation_task(
         elif isinstance(runtime_term.function, FunctionDefinition):
             (
                 parameter_list,
+                parameter_name_to_parameter_mapping,
                 symbolic_return_value
-            ) = nodes_to_parameter_lists_and_symbolic_return_values[
+            ) = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
                 runtime_term.function
             ]
 
@@ -712,8 +733,10 @@ async def handle_function_call_propagation_task(
                 await handle_user_defined_function_call(
                     parameter_list,
                     apparent_argument_node_set_list,
+                    parameter_name_to_parameter_mapping,
+                    argument_name_to_argument_node_set_dict,
                     symbolic_return_value,
-                    returned_value_node_set
+                    returned_value_node_set,
                 )
         else:
             logging.error('Cannot handle UnboundMethod %s!', runtime_term)
@@ -727,8 +750,9 @@ async def handle_function_call_propagation_task(
 
                 (
                     parameter_list,
+                    parameter_name_to_parameter_mapping,
                     symbolic_return_value
-                ) = nodes_to_parameter_lists_and_symbolic_return_values[
+                ) = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
                     named_function_definition
                 ]
 
@@ -736,8 +760,10 @@ async def handle_function_call_propagation_task(
                     await handle_user_defined_function_call(
                         parameter_list[1:],  # Skip the first parameter (self)
                         apparent_argument_node_set_list,
+                        parameter_name_to_parameter_mapping,
+                        argument_name_to_argument_node_set_dict,
                         symbolic_return_value,
-                        returned_value_node_set
+                        returned_value_node_set,
                     )
             else:
                 # Typeshed has stubs
@@ -827,8 +853,9 @@ async def handle_function_call_propagation_task(
         elif isinstance(runtime_term.function, FunctionDefinition):
             (
                 parameter_list,
+                parameter_name_to_parameter_mapping,
                 symbolic_return_value
-            ) = nodes_to_parameter_lists_and_symbolic_return_values[
+            ) = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
                 runtime_term.function
             ]
 
@@ -836,8 +863,10 @@ async def handle_function_call_propagation_task(
                 await handle_user_defined_function_call(
                     parameter_list[1:],  # Skip the first parameter (self)
                     apparent_argument_node_set_list,
+                    parameter_name_to_parameter_mapping,
+                    argument_name_to_argument_node_set_dict,
                     symbolic_return_value,
-                    returned_value_node_set
+                    returned_value_node_set,
                 )
         else:
             logging.error('Cannot handle BoundMethod %s!', runtime_term)
@@ -928,11 +957,20 @@ async def type_ascription_on_function_call(
 async def handle_user_defined_function_call(
         parameter_list: typing.Sequence[ast.arg],
         argument_node_set_list: typing.Sequence[typing.Set[_ast.AST]],
+        parameter_name_to_parameter_mapping: typing.Mapping[str, ast.arg],
+        argument_name_to_argument_node_set_mapping: typing.Mapping[str, typing.Set[_ast.AST]],
         return_value_node: typing.Optional[_ast.AST] = None,
         returned_value_node_set: typing.Optional[typing.Set[_ast.AST]] = None
 ):
     # Handle parameter propagation.
     for parameter_node, argument_node_set in zip(parameter_list, argument_node_set_list):
+        await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
+
+    # Handle parameter propagation by name.
+    parameter_argument_name_matches: set[str] = parameter_name_to_parameter_mapping.keys() & argument_name_to_argument_node_set_mapping.keys()
+    for parameter_argument_name_match in parameter_argument_name_matches:
+        parameter_node = parameter_name_to_parameter_mapping[parameter_argument_name_match]
+        argument_node_set = argument_name_to_argument_node_set_mapping[parameter_argument_name_match]
         await handle_matching_parameter_with_argument(parameter_node, argument_node_set)
 
     # Handle return value propagation.
@@ -941,7 +979,7 @@ async def handle_user_defined_function_call(
 
 
 async def handle_matching_parameter_with_argument(
-        parameter_node: _ast.AST,
+        parameter_node: ast.arg,
         argument_node_set: set[_ast.AST]
 ):
     # Contravariance
@@ -1014,10 +1052,7 @@ async def set_equivalent(node_set: typing.AbstractSet[_ast.AST], propagate_runti
                     target_equivalent_set_top_node,
                     acquirer_equivalent_set_top_node
                 ):
-                    if relation_type not in (
-                            NonEquivalenceRelationType.ArgumentOf,
-                            NonEquivalenceRelationType.ReturnedValueOf
-                    ):
+                    if relation_type in switches_singleton.valid_relations_to_induce_equivalent_relations:
                         induced_equivalent_node_set_list.append(
                             equivalent_set_top_node_non_equivalence_relation_graph.get_out_nodes_with_relation_type_and_parameter(
                                 node, relation_type, parameter
@@ -1066,9 +1101,8 @@ async def set_equivalent(node_set: typing.AbstractSet[_ast.AST], propagate_runti
                         runtime_term_sharing_acquirer_equivalent_set_runtime_term_set_delta)
 
         # Propagate induced equivalent node sets
-        if switches_singleton.resolve_induced_equivalent_relations:
-            for induced_equivalence_node_set in induced_equivalent_node_set_list:
-                await set_equivalent(induced_equivalence_node_set, propagate_runtime_terms=False)
+        for induced_equivalence_node_set in induced_equivalent_node_set_list:
+            await set_equivalent(induced_equivalence_node_set, propagate_runtime_terms=False)
 
         # Propagate runtime terms
         if propagate_runtime_terms:

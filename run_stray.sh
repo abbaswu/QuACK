@@ -75,7 +75,7 @@ fi
 
 if ! [ -d "$module_search_path" ]
 then
-    echo "Module search path `$module_search_path` is not a directory!" >&2
+    echo "Module search path ${module_search_path} is not a directory!" >&2
     exit 1
 fi
 
@@ -90,7 +90,7 @@ cd "$STRAY_ROOT"
 
 set +e
 
-python3 "$current_working_directory/print_python_file_paths.py" -q "$query_dict" -s "$absolute_module_search_path" | while read python_file_path
+python3 "$current_working_directory/print_python_file_paths.py" -q "$query_dict" -s "$absolute_module_search_path" | while read -r python_file_path
 do
     directory_name="$(dirname "$python_file_path")"
     file_name="$(basename "$python_file_path")"

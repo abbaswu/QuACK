@@ -20,7 +20,7 @@ from build_ast_node_namespace_trie import build_ast_node_namespace_trie
 from class_query_database import ClassQueryDatabase
 from collect_and_resolve_typing_constraints import collect_and_resolve_typing_constraints
 from query_result_dict import *
-from relations import NonEquivalenceRelationGraph
+from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationType
 from runtime_term import RuntimeTerm
 from trie import search
 from type_inference import TypeInference
@@ -189,6 +189,8 @@ def main():
     parser.add_argument('--no-attribute-access-propagation', action='store_true', required=False)
     parser.add_argument('--no-stdlib-function-call-propagation', action='store_true', required=False)
     parser.add_argument('--no-user-defined-function-call-propagation', action='store_true', required=False)
+    parser.add_argument('--no-shortcut-single-class-covering-all-attributes', action='store_true', required=False)
+    parser.add_argument('--no-parameter-default-value-handling', action='store_true', required=False)
 
     args = parser.parse_args()
 
@@ -199,7 +201,7 @@ def main():
 
     # Set switches
     if args.no_induced_equivalent_relation_resolution:
-        switches_singleton.resolve_induced_equivalent_relations = False
+        switches_singleton.valid_relations_to_induce_equivalent_relations = frozenset()
 
     if args.no_attribute_access_propagation:
         switches_singleton.propagate_attribute_accesses = False
@@ -209,6 +211,12 @@ def main():
 
     if args.no_user_defined_function_call_propagation:
         switches_singleton.propagate_user_defined_function_calls = False
+
+    if args.no_shortcut_single_class_covering_all_attributes:
+        switches_singleton.shortcut_single_class_covering_all_attributes = False
+    
+    if args.no_parameter_default_value_handling:
+        switches_singleton.handle_parameter_default_values = False
 
     # Find modules
     (
@@ -391,8 +399,11 @@ def main():
                     for function_node in function_node_set:
                         function_name = function_node.name
 
-                        parameter_list, symbolic_return_value = \
-                        parameter_lists_and_symbolic_return_values_singleton.nodes_to_parameter_lists_and_symbolic_return_values[
+                        (
+                            parameter_list,
+                            parameter_name_to_parameter_mapping,
+                            symbolic_return_value,
+                        ) = parameter_lists_and_symbolic_return_values_singleton.nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
                             function_node
                         ]
 
@@ -412,6 +423,16 @@ def main():
                             if not (class_name != 'global' and i == 0 and parameter.arg in ('self', 'cls')):
                                 parameter_names_to_parameter_nodes[parameter.arg] = parameter
 
+                        # Add parameters that are not in the parameter list.
+                        existing_parameter_names = {
+                            parameter.arg
+                            for parameter in parameter_list
+                        }
+
+                        for parameter_name, parameter in parameter_name_to_parameter_mapping.items():
+                            if parameter_name not in existing_parameter_names:
+                                parameter_names_to_parameter_nodes[parameter_name] = parameter
+
                         for parameter_name, parameter_node in parameter_names_to_parameter_nodes.items():
                             logging.info(
                                 'Inferring types for %s::%s::%s::%s',
@@ -425,7 +446,6 @@ def main():
 
                             type_inference_result = type_inference.infer_type_for_equivalent_node_disjoint_set_top_nodes(
                                 frozenset([top_node]),
-                                pre_class_inference_callback=pre_class_inference_print_equivalent_set_callback,
                                 class_inference_log_file_io=class_inference_log_file_io
                             )
 

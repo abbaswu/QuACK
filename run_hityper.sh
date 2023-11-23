@@ -78,14 +78,14 @@ fi
 
 if ! [ -d "$module_search_path" ]
 then
-    echo "Module search path `$module_search_path` is not a directory!" >&2
+    echo "Module search path ${module_search_path} is not a directory!" >&2
     exit 1
 fi
 
 hityper_output_directory="$(pwd)/hityper_output_directory"
 mkdir -p "$hityper_output_directory"
 
-python3 "$PRINT_PYTHON_FILE_PATHS" -q "$query_dict" -s "$module_search_path" | while read python_file_path
+python3 "$PRINT_PYTHON_FILE_PATHS" -q "$query_dict" -s "$module_search_path" | while read -r python_file_path
 do
     echo conda run --no-capture-output --name hityper hityper infer -p "$module_search_path" -s "$python_file_path" -d "$hityper_output_directory" -t 1>&2
     conda run --no-capture-output --name hityper hityper infer -p "$module_search_path" -s "$python_file_path" -d "$hityper_output_directory" -t 1>&2

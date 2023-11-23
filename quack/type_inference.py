@@ -11,6 +11,7 @@ from types import ModuleType, FunctionType
 
 import numpy as np
 
+import switches_singleton
 from determine_number_of_type_variables import determine_number_of_type_variables
 from disjoint_set import DisjointSet
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
@@ -97,6 +98,7 @@ class TypeInference:
             # Determine whether it can be None.
 
             can_be_none: bool = False
+            non_none_instance_classes: set[RuntimeClass] = set()
 
             runtime_term_sharing_node_disjoint_set_top_node_set = {
                 self.runtime_term_sharing_node_disjoint_set.find(equivalent_node)
@@ -105,10 +107,16 @@ class TypeInference:
             }
 
             for runtime_term_sharing_node_disjoint_set_top_node in runtime_term_sharing_node_disjoint_set_top_node_set:
-                if Instance(type(None)) in self.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                runtime_term_set = self.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
                     runtime_term_sharing_node_disjoint_set_top_node
-                ]:
-                    can_be_none = True
+                ]
+                for runtime_term in runtime_term_set:
+                    if isinstance(runtime_term, Instance):
+                        instance_class = runtime_term.class_
+                        if instance_class is type(None):
+                            can_be_none = True
+                        else:
+                            non_none_instance_classes.add(instance_class)
 
             logging.info(
                 '%sCan %s be None? %s',
@@ -133,32 +141,45 @@ class TypeInference:
 
             confidence_and_possible_class_list: list[tuple[float, TypeshedClass]] = list()
 
-            (
-                possible_class_ndarray,
-                cosine_similarity_ndarray,
-            ) = self.type_query_database.query(attribute_counter)
+            if (
+                    switches_singleton.shortcut_single_class_covering_all_attributes
+                    and len(non_none_instance_classes) == 1
+                    and set(attribute_counter.keys()).issubset(
+                        get_attributes_in_runtime_class(next(iter(non_none_instance_classes)))
+                    )
+            ):
 
-            nonzero_cosine_similarity_indices = (cosine_similarity_ndarray > cosine_similarity_threshold)
-
-            selected_possible_class_ndarray = possible_class_ndarray[nonzero_cosine_similarity_indices]
-            selected_cosine_similarity_ndarray = cosine_similarity_ndarray[nonzero_cosine_similarity_indices]
-
-            argsort = np.argsort(selected_cosine_similarity_ndarray)
-
-            for i in argsort[-1::-1]:
-                possible_class = selected_possible_class_ndarray[i]
-                cosine_similarity = float(selected_cosine_similarity_ndarray[i])
-
+                single_instance_class_covering_all_attributes = next(iter(non_none_instance_classes))
                 confidence_and_possible_class_list.append(
-                    (cosine_similarity, possible_class)
+                    (1, from_runtime_class(single_instance_class_covering_all_attributes))
                 )
+            else:
+                (
+                    possible_class_ndarray,
+                    cosine_similarity_ndarray,
+                ) = self.type_query_database.query(attribute_counter)
 
-            logging.info(
-                '%sPossible types queried for %s based on attributes: %s',
-                indent,
-                equivalent_node_disjoint_set_top_nodes,
-                confidence_and_possible_class_list
-            )
+                nonzero_cosine_similarity_indices = (cosine_similarity_ndarray > cosine_similarity_threshold)
+
+                selected_possible_class_ndarray = possible_class_ndarray[nonzero_cosine_similarity_indices]
+                selected_cosine_similarity_ndarray = cosine_similarity_ndarray[nonzero_cosine_similarity_indices]
+
+                argsort = np.argsort(selected_cosine_similarity_ndarray)
+
+                for i in argsort[-1::-1]:
+                    possible_class = selected_possible_class_ndarray[i]
+                    cosine_similarity = float(selected_cosine_similarity_ndarray[i])
+
+                    confidence_and_possible_class_list.append(
+                        (cosine_similarity, possible_class)
+                    )
+
+                logging.info(
+                    '%sPossible types queried for %s based on attributes: %s',
+                    indent,
+                    equivalent_node_disjoint_set_top_nodes,
+                    confidence_and_possible_class_list
+                )
 
             return_value = confidence_and_possible_class_list, can_be_none
 
@@ -410,9 +431,6 @@ class TypeInference:
                     return_value = type_inference_result
                 else:
                     return_value = top_class_prediction
-
-                if can_be_none:
-                    return_value = subscribe(TypeshedClass('typing', 'Optional'), (return_value,))
 
             self.type_inference_cache[equivalent_node_disjoint_set_top_nodes] = return_value
 

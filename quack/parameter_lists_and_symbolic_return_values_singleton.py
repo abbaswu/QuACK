@@ -12,10 +12,10 @@ from get_parameters import get_parameters
 from node_visitor import NodeProvidingScope, ScopedNodeVisitor
 
 
-nodes_to_parameter_lists_and_symbolic_return_values: defaultdict[
+nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values: defaultdict[
     _ast.AST,
-    tuple[list[ast.arg], _ast.AST]
-] = defaultdict(lambda: ([], _ast.AST()))
+    tuple[list[ast.arg], dict[str, ast.arg], _ast.AST]
+] = defaultdict(lambda: ([], dict(), _ast.AST()))
 
 
 def get_parameter_lists_and_symbolic_return_values(
@@ -38,8 +38,14 @@ def get_parameter_lists_and_symbolic_return_values(
                 kwarg
             ) = get_parameters(node)
 
-            nodes_to_parameter_lists_and_symbolic_return_values[node] = (
+            parameter_name_to_parameter_mapping: dict[str, ast.arg] = {}
+            for parameter in posargs + kwonlyargs:
+                if parameter.arg not in parameter_name_to_parameter_mapping:
+                    parameter_name_to_parameter_mapping[parameter.arg] = parameter
+
+            nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[node] = (
                 posargs,
+                parameter_name_to_parameter_mapping,
                 _ast.AST()
             )
 

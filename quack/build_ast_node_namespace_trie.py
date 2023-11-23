@@ -12,7 +12,7 @@ import ast
 import typing
 
 from node_visitor import get_child_nodes
-from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_and_symbolic_return_values
+from parameter_lists_and_symbolic_return_values_singleton import nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values
 from trie import TrieNode
 
 
@@ -84,13 +84,13 @@ class ModuleLevelASTNodeNamespaceTrieBuilder:
             self.namespace_defining_trie_node_stack.append(new_namespace_defining_trie_node)
 
             # Add parameters and return value to namespace.
-            if node in nodes_to_parameter_lists_and_symbolic_return_values:
-                parameter_list, symbolic_return_value = nodes_to_parameter_lists_and_symbolic_return_values[node]
-                for parameter in parameter_list:
+            if node in nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values:
+                _, parameter_name_to_parameter_mapping, symbolic_return_value = nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[node]
+                for parameter_name, parameter in parameter_name_to_parameter_mapping.items():
                     add_node_that_accesses_name(
                         new_namespace_defining_trie_node,
                         parameter,
-                        parameter.arg,
+                        parameter_name,
                     )
                 add_node_that_accesses_name(
                     new_namespace_defining_trie_node,
