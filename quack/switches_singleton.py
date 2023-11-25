@@ -22,3 +22,6 @@ valid_relations_to_induce_equivalent_relations = frozenset([
 ])
 handle_parameter_default_values = True
 propagate_instance_attribute_accesses = True
+log_term_frequency = False
+parameters_only = False
+return_values_only = False

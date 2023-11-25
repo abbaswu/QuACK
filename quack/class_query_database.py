@@ -1,6 +1,7 @@
 import builtins
 import collections.abc
 import logging
+import math
 import numbers
 import typing
 import types
@@ -220,7 +221,10 @@ class ClassQueryDatabase:
         tf_idf_ndarray = zeros(self.number_of_attributes)
         number_of_attributes: int = 0
         for attribute, count in attribute_counter.items():
-            tf = count
+            if switches_singleton.log_term_frequency:
+                tf = math.log1p(count)
+            else:
+                tf = count
             try:
                 index = self.attribute_to_index_dict[attribute]
                 idf = self.attribute_to_idf_dict[attribute]

@@ -191,6 +191,9 @@ def main():
     parser.add_argument('--no-user-defined-function-call-propagation', action='store_true', required=False)
     parser.add_argument('--no-shortcut-single-class-covering-all-attributes', action='store_true', required=False)
     parser.add_argument('--no-parameter-default-value-handling', action='store_true', required=False)
+    parser.add_argument('--log-term-frequency', action='store_true', required=False, default=False)
+    parser.add_argument('--parameters-only', action='store_true', required=False, default=False)
+    parser.add_argument('--return-values-only', action='store_true', required=False, default=False)
 
     args = parser.parse_args()
 
@@ -217,6 +220,15 @@ def main():
     
     if args.no_parameter_default_value_handling:
         switches_singleton.handle_parameter_default_values = False
+
+    if args.log_term_frequency:
+        switches_singleton.log_term_frequency = True
+
+    if args.parameters_only:
+        switches_singleton.parameters_only = True
+
+    if args.return_values_only:
+        switches_singleton.return_values_only = True
 
     # Find modules
     (
@@ -415,19 +427,21 @@ def main():
                         if (
                                 not (class_name != 'global' and function_name in ('__init__', '__new__'))
                                 and contains_return_statement(function_node)
+                                and not switches_singleton.parameters_only
                         ):
                             parameter_names_to_parameter_nodes['return'] = symbolic_return_value
 
-                        # Do not infer parameter types for self and cls in methods of classes.
-                        for i, parameter in enumerate(parameter_list):
-                            if not (class_name != 'global' and i == 0 and parameter.arg in ('self', 'cls')):
-                                parameter_names_to_parameter_nodes[parameter.arg] = parameter
+                        if not switches_singleton.return_values_only:
+                            # Do not infer parameter types for self and cls in methods of classes.
+                            for i, parameter in enumerate(parameter_list):
+                                if not (class_name != 'global' and i == 0 and parameter.arg in ('self', 'cls')):
+                                    parameter_names_to_parameter_nodes[parameter.arg] = parameter
 
-                        # Add parameters that are not in the parameter list.
-                        existing_parameter_names = {
-                            parameter.arg
-                            for parameter in parameter_list
-                        }
+                            # Add parameters that are not in the parameter list.
+                            existing_parameter_names = {
+                                parameter.arg
+                                for parameter in parameter_list
+                            }
 
                         for parameter_name, parameter in parameter_name_to_parameter_mapping.items():
                             if parameter_name not in existing_parameter_names:
