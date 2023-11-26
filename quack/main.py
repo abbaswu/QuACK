@@ -443,9 +443,9 @@ def main():
                                 for parameter in parameter_list
                             }
 
-                        for parameter_name, parameter in parameter_name_to_parameter_mapping.items():
-                            if parameter_name not in existing_parameter_names:
-                                parameter_names_to_parameter_nodes[parameter_name] = parameter
+                            for parameter_name, parameter in parameter_name_to_parameter_mapping.items():
+                                if parameter_name not in existing_parameter_names:
+                                    parameter_names_to_parameter_nodes[parameter_name] = parameter
 
                         for parameter_name, parameter_node in parameter_names_to_parameter_nodes.items():
                             logging.info(
