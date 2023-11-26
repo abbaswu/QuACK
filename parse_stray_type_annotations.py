@@ -23,7 +23,7 @@ callable: "def" "(" args ")" ("->" type_annotation)?
 args: arg? ("," arg)*
 arg: posarg | vararg | kwarg
 posarg: (NAME ":")? type_annotation "="?
-vararg: "*" (NAME ":")? type_annotation "="?
+vararg: "*" (NAME ":")? type_annotation "="? | "*"
 kwarg: "**" (NAME ":")? type_annotation "="?
 nothing: "<nothing>"
 partial: "<" "partial" type_annotation ">"
