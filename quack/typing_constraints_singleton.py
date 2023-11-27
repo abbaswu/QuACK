@@ -8,6 +8,7 @@ import ast
 import asyncio
 import collections
 import collections.abc
+import datetime
 import itertools
 import logging
 import typing
@@ -320,7 +321,7 @@ async def add_propagation_task(
             if switches_singleton.propagate_attribute_accesses:
                 await handle_attribute_access_propagation_task(node, propagation_task)
         elif isinstance(propagation_task, FunctionCallPropagationTask):
-            if switches_singleton.propagate_user_defined_function_calls:
+            if switches_singleton.propagate_user_defined_function_calls or switches_singleton.propagate_stdlib_function_calls:
                 await handle_function_call_propagation_task(node, propagation_task)
         else:
             raise TypeError(f'Unknown propagation task type {type(propagation_task)}!')
@@ -429,9 +430,6 @@ async def handle_attribute_access_propagation_task(
                             runtime_term,
                             unwrapped_attribute
                         )
-            # Class -> Instance
-            elif not callable(unwrapped_attribute):
-                instance_attribute_access_runtime_class = type(unwrapped_attribute)
         else:
             logging.error('Cannot statically get attribute `%s` on class %s!', attribute_name, runtime_term.class_)
 
@@ -896,13 +894,15 @@ async def type_ascription_on_function_call(
             typeshed_type_variable: TypeshedTypeVariable,
             weight: float
     ):
-        await set_equivalent(node_set | {typeshed_type_variables_to_nodes[typeshed_type_variable]})
+        if not switches_singleton.simplified_type_ascription:
+            await set_equivalent(node_set | {typeshed_type_variables_to_nodes[typeshed_type_variable]})
 
     async def typeshed_class_ascription_callback(
             node_set: frozenset[ast.AST],
             typeshed_class: TypeshedClass,
             weight: float
     ):
+        
         runtime_class: RuntimeClass | None = to_runtime_class(typeshed_class)
         if runtime_class is None:
             logging.error('Cannot convert %s to a runtime class!', typeshed_class)
@@ -929,7 +929,7 @@ async def type_ascription_on_function_call(
         for node in node_set:
             await update_attributes(node, attribute_set, weight)
 
-            if runtime_class is not None:
+            if not switches_singleton.simplified_type_ascription and runtime_class is not None:
                 await add_runtime_terms(node, {Instance(runtime_class)})
 
     # Invoke type ascription procedure on apparent arguments and return values.

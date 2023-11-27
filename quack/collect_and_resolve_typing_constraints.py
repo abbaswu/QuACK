@@ -63,36 +63,26 @@ async def collect_and_resolve_typing_constraints(
     Collect and resolve typing constraints based on the semantics of each AST node.
     """
     # --------------------------------------------------------------------------------------------- #
-    # For the unwrapped runtime functions and runtime classes,
-    # And the literals True, False, Ellipsis, None, NotImplemented in builtins,
-    # Initialize nodes which 'define' them,
-    # And associate them with adequate runtime values.
-    names_to_nodes_for_builtins: dict[str, _ast.AST] = dict()
-
-    for key, value in builtins.__dict__.items():
-        if isinstance(value, (UnwrappedRuntimeFunction, RuntimeClass)):
-            node = await create_new_node()
-
-            names_to_nodes_for_builtins[key] = node
-            await add_runtime_terms(node, {value})
-
-    for value in (True, False, Ellipsis, None, NotImplemented):
-        key = str(value)
-        node = await create_new_node()
-
-        names_to_nodes_for_builtins[key] = node
-        await set_node_to_be_instance_of(node, type(value))
-
-    # --------------------------------------------------------------------------------------------- #
+    # For the unwrapped runtime functions and runtime classes in builtins,
     # For each imported name within a module,
     # Initialize dummy nodes which 'define' them,
     # And associate them with adequate runtime values.
-    module_names_to_imported_names_to_dummy_ast_nodes: defaultdict[str, dict[str, ast.AST]] = defaultdict(dict)
+    module_names_to_names_to_dummy_ast_nodes: defaultdict[str, dict[str, ast.AST]] = defaultdict(dict)
 
-    for module_name, imported_names_to_runtime_objects in module_names_to_imported_names_to_runtime_objects.items():
+    for module_name in module_names_to_module_nodes:
+        names_to_dummy_ast_nodes = module_names_to_names_to_dummy_ast_nodes[module_name]
+
+        for key, value in builtins.__dict__.items():
+            if isinstance(value, (UnwrappedRuntimeFunction, RuntimeClass)):
+                node = await create_new_node()
+
+                names_to_dummy_ast_nodes[key] = node
+                await add_runtime_terms(node, {value})
+
+        imported_names_to_runtime_objects = module_names_to_imported_names_to_runtime_objects[module_name]
         for imported_name, runtime_object in imported_names_to_runtime_objects.items():
             node = await create_new_node()
-            module_names_to_imported_names_to_dummy_ast_nodes[module_name][imported_name] = node
+            names_to_dummy_ast_nodes[imported_name] = node
 
             unwrapped_runtime_object = unwrap(runtime_object)
             runtime_term: RuntimeTerm | None = None
@@ -372,11 +362,10 @@ async def collect_and_resolve_typing_constraints(
         nodes_providing_scope_to_local_names_to_definition_nodes: defaultdict[
             NodeProvidingScope | None, dict[str, ast.AST]
         ] = defaultdict(dict)
-        nodes_providing_scope_to_local_names_to_definition_nodes[None].update(names_to_nodes_for_builtins)
-        if module_name in module_names_to_imported_names_to_dummy_ast_nodes:
-            nodes_providing_scope_to_local_names_to_definition_nodes[None].update(
-                module_names_to_imported_names_to_dummy_ast_nodes[module_name]
-            )
+
+        nodes_providing_scope_to_local_names_to_definition_nodes[None].update(
+            module_names_to_names_to_dummy_ast_nodes[module_name]
+        )
 
         nodes_providing_scope_to_explicit_global_names_to_definition_nodes: defaultdict[
             NodeProvidingScope | None, dict[str, ast.AST]
@@ -977,22 +966,6 @@ async def collect_and_resolve_typing_constraints(
 
             # Set the type variable of `target` as $IterTargetOf$ the type variable of `iter`.
             await add_relation(node.iter, node.target, NonEquivalenceRelationType.IterTargetOf)
-
-        # ast.ExceptHandler(type, name, body)
-        if isinstance(node, ast.ExceptHandler):
-            # Create `isinstance_node = ast.Name('isinstance', ast.Load())`, associate it with the built-in `isinstance` function.
-            isinstance_node = await create_new_node()
-
-            await set_equivalent({
-                isinstance_node,
-                names_to_nodes_for_builtins['isinstance']
-            })
-
-            # Set the current type variable as the $0$-th $ParameterOf$ the type variable of `isinstance_node`.
-            await add_relation(isinstance_node, node, NonEquivalenceRelationType.ArgumentOf, 0)
-
-            # Set the type variable of `type` as the $1$-st $ParameterOf$ the type variable of `isinstance_node`.
-            await add_relation(isinstance_node, node.type, NonEquivalenceRelationType.ArgumentOf, 1)
 
         # ast.With(items, body, type_comment)
         if isinstance(node, ast.With):

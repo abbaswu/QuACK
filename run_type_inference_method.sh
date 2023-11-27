@@ -301,7 +301,7 @@ case "$method" in
         --output-file "$output_file_path" \
         --class-inference-log-file="$class_inference_log_file"
         ;;
-      quack--log-term-frequency)
+    quack--log-term-frequency)
         if [ -f "${module_search_path}/requirements.txt" ]; then
             conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
@@ -316,6 +316,26 @@ case "$method" in
         conda run --no-capture-output --name quack \
         python3 "$(pwd)/quack/main.py" \
         --log-term-frequency \
+        --module-search-path "$module_search_path" \
+        --module-prefix "$module_prefix" \
+        --output-file "$output_file_path" \
+        --class-inference-log-file="$class_inference_log_file"
+        ;;
+    quack--simplified-type-ascription)
+        if [ -f "${module_search_path}/requirements.txt" ]; then
+            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
+        fi
+
+        mkdir -p "$raw_output_directory"
+        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
+
+        PYTHONPATH="$module_search_path" \
+        /usr/bin/time \
+        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
+        -o "$time_output_file_path" \
+        conda run --no-capture-output --name quack \
+        python3 "$(pwd)/quack/main.py" \
+        --simplified-type-ascription \
         --module-search-path "$module_search_path" \
         --module-prefix "$module_prefix" \
         --output-file "$output_file_path" \

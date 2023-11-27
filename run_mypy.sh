@@ -103,7 +103,7 @@ cd "$module_search_path" || exit 1
 mypy_module_option_string="$(build_mypy_module_option_string "$module_list")"
 
 # Run mypy
-mypy_command="conda run --no-capture-output --name mypy mypy --check-untyped-defs --no-warn-no-return --implicit-optional --no-strict-optional $mypy_module_option_string"
+mypy_command="conda run --no-capture-output --name mypy mypy --check-untyped-defs --no-warn-no-return --no-strict-optional $mypy_module_option_string"
 
 eval "$mypy_command"
 

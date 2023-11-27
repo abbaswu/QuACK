@@ -14,9 +14,10 @@ from numpy import ndarray, zeros, fromiter
 from scipy.spatial.distance import cosine
 
 import switches_singleton
+from breadth_first_search_layers import breadth_first_search_layers
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
 from get_types_in_module import get_types_in_module
-from inheritance_graph import construct_inheritance_graph, iterate_inheritance_graph
+from inheritance_graph import construct_base_to_derived_graph
 from set_trie import SetTrieNode, add, contains
 from typeshed_client_ex.client import Client
 from typeshed_client_ex.type_definitions import TypeshedClass, from_runtime_class, get_attributes_in_class_definition
@@ -157,24 +158,27 @@ class ClassQueryDatabase:
                         if mro_entry.__module__ not in excluded_module_names:
                             runtime_class_set_from_modules.add(mro_entry)
 
-        inheritance_graph = construct_inheritance_graph(runtime_class_set_from_modules)
-        for runtime_class in iterate_inheritance_graph(inheritance_graph):
-            attributes_in_runtime_class = get_attributes_in_runtime_class(runtime_class)
-            if contains(attribute_set_trie_root, attributes_in_runtime_class):
-                type_set = attribute_frozenset_to_candidate_class_set_dict[frozenset(attributes_in_runtime_class)]
-                try:
-                    if issubclass(runtime_class, tuple(type_set)):
-                        logging.warning('Excluded runtime class %s from class query database as a superclass in %s covers its attribute set', runtime_class, type_set)
+        base_to_derived_graph = construct_base_to_derived_graph(runtime_class_set_from_modules)
+
+        for runtime_class_set in breadth_first_search_layers(base_to_derived_graph):
+            for runtime_class in runtime_class_set:
+                attributes_in_runtime_class = get_attributes_in_runtime_class(runtime_class)
+
+                if contains(attribute_set_trie_root, attributes_in_runtime_class):
+                    type_set = attribute_frozenset_to_candidate_class_set_dict[frozenset(attributes_in_runtime_class)]
+                    try:
+                        if issubclass(runtime_class, tuple(type_set)):
+                            logging.warning('Excluded runtime class %s from class query database as a superclass in %s covers its attribute set', runtime_class, type_set)
+                            continue
+                    except TypeError:
+                        logging.exception('Excluded runtime class %s from class query database.', runtime_class)
                         continue
-                except TypeError:
-                    logging.exception('Excluded runtime class %s from class query database.', runtime_class)
-                    continue
 
-            add(attribute_set_trie_root, attributes_in_runtime_class)
-            attribute_frozenset_to_candidate_class_set_dict[frozenset(attributes_in_runtime_class)].add(runtime_class)
+                add(attribute_set_trie_root, attributes_in_runtime_class)
+                attribute_frozenset_to_candidate_class_set_dict[frozenset(attributes_in_runtime_class)].add(runtime_class)
 
-            typeshed_class = from_runtime_class(runtime_class)
-            typeshed_class_to_attribute_set_dict[typeshed_class] = attributes_in_runtime_class
+                typeshed_class = from_runtime_class(runtime_class)
+                typeshed_class_to_attribute_set_dict[typeshed_class] = attributes_in_runtime_class
 
         for typeshed_class, attribute_set in typeshed_class_to_attribute_set_dict.items():
             self.candidate_class_list.append(typeshed_class)

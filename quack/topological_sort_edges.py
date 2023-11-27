@@ -3,16 +3,16 @@ import typing
 import networkx as nx
 
 
-def topological_sort_edges(digraph: nx.DiGraph):
+def topological_sort_edges(G: nx.DiGraph):
     # Perform the topological sort on nodes
     # Create a mapping from node to its position in the topological order
     node_position: dict[typing.Any, int] = {
-        node: pos for pos, node in enumerate(nx.topological_sort(digraph))
+        node: pos for pos, node in enumerate(nx.topological_sort(G))
     }
 
     # Sort the edges based on the topological order of their source nodes
     topological_order_edges: list[tuple[typing.Any, typing.Any]] = sorted(
-        digraph.edges(data=False), key=lambda edge: node_position[edge[0]]
+        G.edges(data=False), key=lambda edge: node_position[edge[0]]
     )
 
     return topological_order_edges
@@ -29,4 +29,7 @@ if __name__ == '__main__':
         (2, 5),
         (4, 6),
         (5, 6),
+        (7, 8)
     ])
+    G.add_node(9)
+

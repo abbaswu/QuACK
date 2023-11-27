@@ -194,6 +194,7 @@ def main():
     parser.add_argument('--log-term-frequency', action='store_true', required=False, default=False)
     parser.add_argument('--parameters-only', action='store_true', required=False, default=False)
     parser.add_argument('--return-values-only', action='store_true', required=False, default=False)
+    parser.add_argument('--simplified-type-ascription', action='store_true', required=False, default=False)
 
     args = parser.parse_args()
 
@@ -229,6 +230,9 @@ def main():
 
     if args.return_values_only:
         switches_singleton.return_values_only = True
+    
+    if args.simplified_type_ascription:
+        switches_singleton.simplified_type_ascription = True
 
     # Find modules
     (
@@ -253,12 +257,12 @@ def main():
     module_list = list(module_name_to_module.values())
     module_node_list = [module_name_to_module_node_dict[module_name] for module_name in module_name_to_module]
 
-    ast_node_namespace_trie_root = build_ast_node_namespace_trie(
-        module_name_list,
+    parameter_lists_and_symbolic_return_values_singleton.get_parameter_lists_and_symbolic_return_values(
         module_node_list
     )
 
-    parameter_lists_and_symbolic_return_values_singleton.get_parameter_lists_and_symbolic_return_values(
+    ast_node_namespace_trie_root = build_ast_node_namespace_trie(
+        module_name_list,
         module_node_list
     )
 

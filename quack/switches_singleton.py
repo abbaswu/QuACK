@@ -25,3 +25,4 @@ propagate_instance_attribute_accesses = True
 log_term_frequency = False
 parameters_only = False
 return_values_only = False
+simplified_type_ascription = False
