@@ -48,9 +48,14 @@ RUN conda run --name base pip install lark ordered_set pudb pandas
 # Install /usr/bin/time
 RUN  apt-get update && apt-get install -y time graphviz libgraphviz-dev && apt-get clean
 
+RUN conda create --name extract_type_annotations -y python=3.10 \
+    && conda run --name extract_type_annotations pip install --verbose pudb lark
+
 # Copy entrypoint and data processing scripts
 COPY quack /root/quack/
+COPY quack_new /root/quack_new/
 COPY static_import_analysis /root/static_import_analysis/
+COPY extract_type_annotations /root/extract_type_annotations/
 COPY *.py *.sh /root/
 
 # command executable and version

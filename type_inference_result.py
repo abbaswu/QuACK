@@ -27,7 +27,7 @@ class TypeInferenceClass:
             elif self.class_name == 'ellipsis':
                 return '...'
 
-        if self.module_name is not None:
+        if self.module_name:
             return f'{self.module_name}.{self.class_name}'
         else:
             return self.class_name

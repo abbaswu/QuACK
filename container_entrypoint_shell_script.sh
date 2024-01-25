@@ -114,9 +114,6 @@ fi
 # Copy contents from $MOUNTED_MODULE_SEARCH_PATH to $LOCAL_MODULE_SEARCH_PATH
 cp -R "$MOUNTED_MODULE_SEARCH_PATH" "$LOCAL_MODULE_SEARCH_PATH"
 
-# Strip type annotations from Python files in $LOCAL_MODULE_SEARCH_PATH
-python3 /root/strip_type_annotations.py --directory "$LOCAL_MODULE_SEARCH_PATH"
-
 # Change directory to /root
 cd /root
 

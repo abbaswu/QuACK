@@ -1,0 +1,2080 @@
+%!PS-Adobe-3.0
+%%BoundingBox: 18 36 594 756
+%%Title: Enscript Output
+%%Creator: GNU Enscript 1.6.5.90
+%%CreationDate: Sat Jan 13 14:52:56 2024
+%%Orientation: Landscape
+%%Pages: (atend)
+%%DocumentMedia: Letter 612 792 0 () ()
+%%DocumentNeededResources: (atend)
+%%EndComments
+%%BeginProlog
+%%BeginResource: procset Enscript-Prolog 1.6.5 90
+%
+% Procedures.
+%
+
+/_S {	% save current state
+  /_s save def
+} def
+/_R {	% restore from saved state
+  _s restore
+} def
+
+/S {	% showpage protecting gstate
+  gsave
+  showpage
+  grestore
+} bind def
+
+/MF {	% fontname newfontname -> -	make a new encoded font
+  /newfontname exch def
+  /fontname exch def
+
+  /fontdict fontname findfont def
+  /newfont fontdict maxlength dict def
+
+  fontdict {
+    exch
+    dup /FID eq {
+      % skip FID pair
+      pop pop
+    } {
+      % copy to the new font dictionary
+      exch newfont 3 1 roll put
+    } ifelse
+  } forall
+
+  newfont /FontName newfontname put
+
+  % insert only valid encoding vectors
+  encoding_vector length 256 eq {
+    newfont /Encoding encoding_vector put
+  } if
+
+  newfontname newfont definefont pop
+} def
+
+/MF_PS { % fontname newfontname -> -	make a new font preserving its enc
+  /newfontname exch def
+  /fontname exch def
+
+  /fontdict fontname findfont def
+  /newfont fontdict maxlength dict def
+
+  fontdict {
+    exch
+    dup /FID eq {
+      % skip FID pair
+      pop pop
+    } {
+      % copy to the new font dictionary
+      exch newfont 3 1 roll put
+    } ifelse
+  } forall
+
+  newfont /FontName newfontname put
+
+  newfontname newfont definefont pop
+} def
+
+/SF { % fontname width height -> -	set a new font
+  /height exch def
+  /width exch def
+
+  findfont
+  [width 0 0 height 0 0] makefont setfont
+} def
+
+/SUF { % fontname width height -> -	set a new user font
+  /height exch def
+  /width exch def
+
+  /F-gs-user-font MF
+  /F-gs-user-font width height SF
+} def
+
+/SUF_PS { % fontname width height -> -	set a new user font preserving its enc
+  /height exch def
+  /width exch def
+
+  /F-gs-user-font MF_PS
+  /F-gs-user-font width height SF
+} def
+
+/M {moveto} bind def
+/s {show} bind def
+
+/Box {	% x y w h -> -			define box path
+  /d_h exch def /d_w exch def /d_y exch def /d_x exch def
+  d_x d_y  moveto
+  d_w 0 rlineto
+  0 d_h rlineto
+  d_w neg 0 rlineto
+  closepath
+} def
+
+/bgs {	% x y height blskip gray str -> -	show string with bg color
+  /str exch def
+  /gray exch def
+  /blskip exch def
+  /height exch def
+  /y exch def
+  /x exch def
+
+  gsave
+    x y blskip sub str stringwidth pop height Box
+    gray setgray
+    fill
+  grestore
+  x y M str s
+} def
+
+/bgcs { % x y height blskip red green blue str -> -  show string with bg color
+  /str exch def
+  /blue exch def
+  /green exch def
+  /red exch def
+  /blskip exch def
+  /height exch def
+  /y exch def
+  /x exch def
+
+  gsave
+    x y blskip sub str stringwidth pop height Box
+    red green blue setrgbcolor
+    fill
+  grestore
+  x y M str s
+} def
+
+% Highlight bars.
+/highlight_bars {	% nlines lineheight output_y_margin gray -> -
+  gsave
+    setgray
+    /ymarg exch def
+    /lineheight exch def
+    /nlines exch def
+
+    % This 2 is just a magic number to sync highlight lines to text.
+    0 d_header_y ymarg sub 2 sub translate
+
+    /cw d_output_w cols div def
+    /nrows d_output_h ymarg 2 mul sub lineheight div cvi def
+
+    % for each column
+    0 1 cols 1 sub {
+      cw mul /xp exch def
+
+      % for each rows
+      0 1 nrows 1 sub {
+        /rn exch def
+        rn lineheight mul neg /yp exch def
+        rn nlines idiv 2 mod 0 eq {
+	  % Draw highlight bar.  4 is just a magic indentation.
+	  xp 4 add yp cw 8 sub lineheight neg Box fill
+	} if
+      } for
+    } for
+
+  grestore
+} def
+
+% Line highlight bar.
+/line_highlight {	% x y width height gray -> -
+  gsave
+    /gray exch def
+    Box gray setgray fill
+  grestore
+} def
+
+% Column separator lines.
+/column_lines {
+  gsave
+    .1 setlinewidth
+    0 d_footer_h translate
+    /cw d_output_w cols div def
+    1 1 cols 1 sub {
+      cw mul 0 moveto
+      0 d_output_h rlineto stroke
+    } for
+  grestore
+} def
+
+% Column borders.
+/column_borders {
+  gsave
+    .1 setlinewidth
+    0 d_footer_h moveto
+    0 d_output_h rlineto
+    d_output_w 0 rlineto
+    0 d_output_h neg rlineto
+    closepath stroke
+  grestore
+} def
+
+% Do the actual underlay drawing
+/draw_underlay {
+  ul_style 0 eq {
+    ul_str true charpath stroke
+  } {
+    ul_str show
+  } ifelse
+} def
+
+% Underlay
+/underlay {	% - -> -
+  gsave
+    0 d_page_h translate
+    d_page_h neg d_page_w atan rotate
+
+    ul_gray setgray
+    ul_font setfont
+    /dw d_page_h dup mul d_page_w dup mul add sqrt def
+    ul_str stringwidth pop dw exch sub 2 div ul_h_ptsize -2 div moveto
+    draw_underlay
+  grestore
+} def
+
+/user_underlay {	% - -> -
+  gsave
+    ul_x ul_y translate
+    ul_angle rotate
+    ul_gray setgray
+    ul_font setfont
+    0 0 ul_h_ptsize 2 div sub moveto
+    draw_underlay
+  grestore
+} def
+
+% Page prefeed
+/page_prefeed {		% bool -> -
+  statusdict /prefeed known {
+    statusdict exch /prefeed exch put
+  } {
+    pop
+  } ifelse
+} def
+
+% Wrapped line markers
+/wrapped_line_mark {	% x y charwith charheight type -> -
+  /type exch def
+  /h exch def
+  /w exch def
+  /y exch def
+  /x exch def
+
+  type 2 eq {
+    % Black boxes (like TeX does)
+    gsave
+      0 setlinewidth
+      x w 4 div add y M
+      0 h rlineto w 2 div 0 rlineto 0 h neg rlineto
+      closepath fill
+    grestore
+  } {
+    type 3 eq {
+      % Small arrows
+      gsave
+        .2 setlinewidth
+        x w 2 div add y h 2 div add M
+        w 4 div 0 rlineto
+        x w 4 div add y lineto stroke
+
+        x w 4 div add w 8 div add y h 4 div add M
+        x w 4 div add y lineto
+	w 4 div h 8 div rlineto stroke
+      grestore
+    } {
+      % do nothing
+    } ifelse
+  } ifelse
+} def
+
+% EPSF import.
+
+/BeginEPSF {
+  /b4_Inc_state save def    		% Save state for cleanup
+  /dict_count countdictstack def	% Count objects on dict stack
+  /op_count count 1 sub def		% Count objects on operand stack
+  userdict begin
+  /showpage { } def
+  0 setgray 0 setlinecap
+  1 setlinewidth 0 setlinejoin
+  10 setmiterlimit [ ] 0 setdash newpath
+  /languagelevel where {
+    pop languagelevel
+    1 ne {
+      false setstrokeadjust false setoverprint
+    } if
+  } if
+} bind def
+
+/EndEPSF {
+  count op_count sub { pos } repeat	% Clean up stacks
+  countdictstack dict_count sub { end } repeat
+  b4_Inc_state restore
+} bind def
+
+% Check PostScript language level.
+/languagelevel where {
+  pop /gs_languagelevel languagelevel def
+} {
+  /gs_languagelevel 1 def
+} ifelse
+%%EndResource
+%%BeginResource: procset Enscript-Encoding-88591 1.6.5 90
+/encoding_vector [
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/space        	/exclam       	/quotedbl     	/numbersign   	
+/dollar       	/percent      	/ampersand    	/quoteright   	
+/parenleft    	/parenright   	/asterisk     	/plus         	
+/comma        	/hyphen       	/period       	/slash        	
+/zero         	/one          	/two          	/three        	
+/four         	/five         	/six          	/seven        	
+/eight        	/nine         	/colon        	/semicolon    	
+/less         	/equal        	/greater      	/question     	
+/at           	/A            	/B            	/C            	
+/D            	/E            	/F            	/G            	
+/H            	/I            	/J            	/K            	
+/L            	/M            	/N            	/O            	
+/P            	/Q            	/R            	/S            	
+/T            	/U            	/V            	/W            	
+/X            	/Y            	/Z            	/bracketleft  	
+/backslash    	/bracketright 	/asciicircum  	/underscore   	
+/quoteleft    	/a            	/b            	/c            	
+/d            	/e            	/f            	/g            	
+/h            	/i            	/j            	/k            	
+/l            	/m            	/n            	/o            	
+/p            	/q            	/r            	/s            	
+/t            	/u            	/v            	/w            	
+/x            	/y            	/z            	/braceleft    	
+/bar          	/braceright   	/tilde        	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/.notdef      	/.notdef      	/.notdef      	/.notdef      	
+/space        	/exclamdown   	/cent         	/sterling     	
+/currency     	/yen          	/brokenbar    	/section      	
+/dieresis     	/copyright    	/ordfeminine  	/guillemotleft	
+/logicalnot   	/hyphen       	/registered   	/macron       	
+/degree       	/plusminus    	/twosuperior  	/threesuperior	
+/acute        	/mu           	/paragraph    	/bullet       	
+/cedilla      	/onesuperior  	/ordmasculine 	/guillemotright	
+/onequarter   	/onehalf      	/threequarters	/questiondown 	
+/Agrave       	/Aacute       	/Acircumflex  	/Atilde       	
+/Adieresis    	/Aring        	/AE           	/Ccedilla     	
+/Egrave       	/Eacute       	/Ecircumflex  	/Edieresis    	
+/Igrave       	/Iacute       	/Icircumflex  	/Idieresis    	
+/Eth          	/Ntilde       	/Ograve       	/Oacute       	
+/Ocircumflex  	/Otilde       	/Odieresis    	/multiply     	
+/Oslash       	/Ugrave       	/Uacute       	/Ucircumflex  	
+/Udieresis    	/Yacute       	/Thorn        	/germandbls   	
+/agrave       	/aacute       	/acircumflex  	/atilde       	
+/adieresis    	/aring        	/ae           	/ccedilla     	
+/egrave       	/eacute       	/ecircumflex  	/edieresis    	
+/igrave       	/iacute       	/icircumflex  	/idieresis    	
+/eth          	/ntilde       	/ograve       	/oacute       	
+/ocircumflex  	/otilde       	/odieresis    	/divide       	
+/oslash       	/ugrave       	/uacute       	/ucircumflex  	
+/udieresis    	/yacute       	/thorn        	/ydieresis    	
+] def
+%%EndResource
+%%EndProlog
+%%BeginSetup
+%%IncludeResource: font Courier-Bold
+%%IncludeResource: font Courier
+/HFpt_w 10 def
+/HFpt_h 10 def
+/Courier-Bold /HF-gs-font MF
+/HF /HF-gs-font findfont [HFpt_w 0 0 HFpt_h 0 0] makefont def
+/Courier /F-gs-font MF
+/F-gs-font 10 10 SF
+/#copies 1 def
+% Pagedevice definitions:
+gs_languagelevel 1 gt {
+  <<
+    /PageSize [612 792] 
+  >> setpagedevice
+} if
+%%BeginResource: procset Enscript-Header-enscript 1.6.5 90
+%%IncludeResource: font Times-Bold
+%%IncludeResource: font Times-Roman
+
+% Fonts.
+/Times-Bold /HeaderFont-Bold MF
+/HeaderDateF /HeaderFont-Bold findfont 12 scalefont def
+
+/Times-Roman /HeaderFont-Times MF
+/HeaderHDRF /HeaderFont-Times findfont 14 scalefont def
+
+/HeaderPageNumF /Helvetica-Bold findfont 28.8 scalefont def
+
+/do_header {	% print enscript header
+  gsave
+    d_header_x d_header_y translate
+
+    % light bar
+    0 0 d_header_w d_header_h 2 div Box
+    .95 setgray fill
+
+    % dark gray boxes
+    /dbw d_header_h 2 mul def	% dark box width
+    /dbc .7 def			% dark box color
+
+    % left dark box.
+    0 0 dbw d_header_h Box
+    dbc setgray fill
+
+    0 setgray 
+    HeaderDateF setfont
+    moddatestr dup stringwidth pop dbw exch sub 2 div 
+    d_header_h 2 div 2 add moveto show
+    modtimestr dup stringwidth pop dbw exch sub 2 div 
+    d_header_h 5 div moveto show
+
+    % right dark box
+    d_header_w dbw sub 0 dbw d_header_h Box
+    dbc setgray fill
+
+    HeaderPageNumF setfont
+    1 setgray
+    pagenumstr dup
+    stringwidth pop dbw exch sub 2 div d_header_w dbw sub add
+    d_header_h .2 mul moveto show
+
+    % filename
+    0 setgray 
+    HeaderHDRF setfont
+    d_header_w fname stringwidth pop sub 2 div d_header_h 8 div moveto
+    fname show
+
+    % user supplied header string.
+    user_header_p {
+      /h d_header_h 8 div 5 mul def
+
+      % Implement strict enscript compatibility.
+      user_header_center_str () eq user_header_right_str () eq and {
+        d_header_w user_header_left_str stringwidth pop sub 2 div 
+        h moveto user_header_left_str show
+      } {
+        dbw 5 add h moveto user_header_left_str show
+
+        d_header_w user_header_center_str stringwidth pop sub 2 div 
+        h moveto user_header_center_str show
+
+	d_header_w dbw sub 5 sub user_header_right_str stringwidth pop
+	sub h moveto user_header_right_str show
+      } ifelse
+    } if
+
+  grestore
+} def
+%%EndResource
+/d_page_w 720 def
+/d_page_h 576 def
+/d_header_x 0 def
+/d_header_y 540 def
+/d_header_w 720 def
+/d_header_h 36 def
+/d_footer_x 0 def
+/d_footer_y 0 def
+/d_footer_w 720 def
+/d_footer_h 0 def
+/d_output_w 720 def
+/d_output_h 540 def
+/cols 1 def
+%%EndSetup
+%%Page: (1) 1
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 1 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (1) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+30 527 M (1:) s
+/Courier-Bold 10 10 SUF
+48 527 M
+(import) s
+/F-gs-font 10 10 SF
+84 527 M
+( _ast) s
+30 516 M (2:) s
+/Courier-Bold 10 10 SUF
+48 516 M
+(import) s
+/F-gs-font 10 10 SF
+84 516 M
+( ast) s
+30 505 M (3:) s
+/Courier-Bold 10 10 SUF
+48 505 M
+(import) s
+/F-gs-font 10 10 SF
+84 505 M
+( asyncio) s
+30 494 M (4:) s
+/Courier-Bold 10 10 SUF
+48 494 M
+(import) s
+/F-gs-font 10 10 SF
+84 494 M
+( itertools) s
+30 483 M (5:) s
+/Courier-Bold 10 10 SUF
+48 483 M
+(import) s
+/F-gs-font 10 10 SF
+84 483 M
+( json) s
+30 472 M (6:) s
+/Courier-Bold 10 10 SUF
+48 472 M
+(import) s
+/F-gs-font 10 10 SF
+84 472 M
+( logging) s
+30 461 M (7:) s
+/Courier-Bold 10 10 SUF
+48 461 M
+(import) s
+/F-gs-font 10 10 SF
+84 461 M
+( typing) s
+30 450 M (8:) s
+30 439 M (9:) s
+/Courier-Bold 10 10 SUF
+48 439 M
+(from) s
+/F-gs-font 10 10 SF
+72 439 M
+( collections ) s
+/Courier-Bold 10 10 SUF
+150 439 M
+(import) s
+/F-gs-font 10 10 SF
+186 439 M
+( defaultdict, Counter) s
+24 428 M (10:) s
+/Courier-Bold 10 10 SUF
+48 428 M
+(from) s
+/F-gs-font 10 10 SF
+72 428 M
+( types ) s
+/Courier-Bold 10 10 SUF
+114 428 M
+(import) s
+/F-gs-font 10 10 SF
+150 428 M
+( ModuleType, FunctionType) s
+24 417 M (11:) s
+24 406 M (12:) s
+/Courier-Bold 10 10 SUF
+48 406 M
+(import) s
+/F-gs-font 10 10 SF
+84 406 M
+( numpy as np) s
+24 395 M (13:) s
+24 384 M (14:) s
+/Courier-Bold 10 10 SUF
+48 384 M
+(import) s
+/F-gs-font 10 10 SF
+84 384 M
+( node_textual_representation_singleton) s
+24 373 M (15:) s
+/Courier-Bold 10 10 SUF
+48 373 M
+(import) s
+/F-gs-font 10 10 SF
+84 373 M
+( switches_singleton) s
+24 362 M (16:) s
+/Courier-Bold 10 10 SUF
+48 362 M
+(import) s
+/F-gs-font 10 10 SF
+84 362 M
+( typing_constraints_singleton) s
+24 351 M (17:) s
+/Courier-Bold 10 10 SUF
+48 351 M
+(from) s
+/F-gs-font 10 10 SF
+72 351 M
+( breadth_first_search_layers ) s
+/Courier-Bold 10 10 SUF
+246 351 M
+(import) s
+/F-gs-font 10 10 SF
+282 351 M
+( breadth_first_search_layers) s
+24 340 M (18:) s
+/Courier-Bold 10 10 SUF
+48 340 M
+(from) s
+/F-gs-font 10 10 SF
+72 340 M
+( determine_number_of_type_variables ) s
+/Courier-Bold 10 10 SUF
+288 340 M
+(import) s
+/F-gs-font 10 10 SF
+324 340 M
+( determine_number_of_type_variables) s
+24 329 M (19:) s
+/Courier-Bold 10 10 SUF
+48 329 M
+(from) s
+/F-gs-font 10 10 SF
+72 329 M
+( disjoint_set ) s
+/Courier-Bold 10 10 SUF
+156 329 M
+(import) s
+/F-gs-font 10 10 SF
+192 329 M
+( DisjointSet) s
+24 318 M (20:) s
+/Courier-Bold 10 10 SUF
+48 318 M
+(from) s
+/F-gs-font 10 10 SF
+72 318 M
+( get_attributes_in_runtime_class ) s
+/Courier-Bold 10 10 SUF
+270 318 M
+(import) s
+/F-gs-font 10 10 SF
+306 318 M
+( get_attributes_in_runtime_class) s
+24 307 M (21:) s
+/Courier-Bold 10 10 SUF
+48 307 M
+(from) s
+/F-gs-font 10 10 SF
+72 307 M
+( relations ) s
+/Courier-Bold 10 10 SUF
+138 307 M
+(import) s
+/F-gs-font 10 10 SF
+174 307 M
+( NonEquivalenceRelationGraph, NonEquivalenceRelationTuple, NonEquivalenceRelationType) s
+24 296 M (22:) s
+/Courier-Bold 10 10 SUF
+48 296 M
+(from) s
+/F-gs-font 10 10 SF
+72 296 M
+( runtime_term ) s
+/Courier-Bold 10 10 SUF
+156 296 M
+(import) s
+/F-gs-font 10 10 SF
+192 296 M
+( RuntimeTerm, Instance) s
+24 285 M (23:) s
+/Courier-Bold 10 10 SUF
+48 285 M
+(from) s
+/F-gs-font 10 10 SF
+72 285 M
+( type_ascription ) s
+/Courier-Bold 10 10 SUF
+174 285 M
+(import) s
+/F-gs-font 10 10 SF
+210 285 M
+( type_ascription) s
+24 274 M (24:) s
+/Courier-Bold 10 10 SUF
+48 274 M
+(from) s
+/F-gs-font 10 10 SF
+72 274 M
+( type_definitions ) s
+/Courier-Bold 10 10 SUF
+180 274 M
+(import) s
+/F-gs-font 10 10 SF
+216 274 M
+( RuntimeClass) s
+24 263 M (25:) s
+/Courier-Bold 10 10 SUF
+48 263 M
+(from) s
+/F-gs-font 10 10 SF
+72 263 M
+( class_query_database ) s
+/Courier-Bold 10 10 SUF
+204 263 M
+(import) s
+/F-gs-font 10 10 SF
+240 263 M
+( ClassQueryDatabase) s
+24 252 M (26:) s
+/Courier-Bold 10 10 SUF
+48 252 M
+(from) s
+/F-gs-font 10 10 SF
+72 252 M
+( typeshed_client_ex.client ) s
+/Courier-Bold 10 10 SUF
+234 252 M
+(import) s
+/F-gs-font 10 10 SF
+270 252 M
+( Client) s
+24 241 M (27:) s
+24 230 M (28:) s
+/Courier-Bold 10 10 SUF
+48 230 M
+(from) s
+/F-gs-font 10 10 SF
+72 230 M
+( typeshed_client_ex.type_definitions ) s
+/Courier-Bold 10 10 SUF
+294 230 M
+(import) s
+/F-gs-font 10 10 SF
+330 230 M
+( TypeshedTypeAnnotation, TypeshedClass, from_runtime_class, \\) s
+24 219 M (29:) s
+48 219 M
+(    TypeshedTypeVariable, subscribe, replace_type_variables_in_type_annotation, Subscription) s
+24 208 M (30:) s
+24 197 M (31:) s
+24 186 M (32:) s
+/Courier-Bold 10 10 SUF
+48 186 M
+(def) s
+/F-gs-font 10 10 SF
+66 186 M
+( ) s
+/Courier-Bold 10 10 SUF
+72 186 M
+(dump_confidence_and_possible_class_list) s
+/F-gs-font 10 10 SF
+306 186 M
+(\() s
+24 175 M (33:) s
+48 175 M
+(        confidence_and_possible_class_list: list[tuple[float, TypeshedClass]],) s
+24 164 M (34:) s
+48 164 M
+(        class_inference_log_file_io: typing.IO) s
+24 153 M (35:) s
+48 153 M
+(\):) s
+24 142 M (36:) s
+48 142 M
+(    confidence_and_possible_class_string_list_list: list[list[float, str]] = [) s
+24 131 M (37:) s
+48 131 M
+(        [confidence, str\(possible_class\)]) s
+24 120 M (38:) s
+48 120 M
+(        ) s
+/Courier-Bold 10 10 SUF
+96 120 M
+(for) s
+/F-gs-font 10 10 SF
+114 120 M
+( confidence, possible_class ) s
+/Courier-Bold 10 10 SUF
+282 120 M
+(in) s
+/F-gs-font 10 10 SF
+294 120 M
+( confidence_and_possible_class_list) s
+24 109 M (39:) s
+48 109 M
+(    ]) s
+24 98 M (40:) s
+24 87 M (41:) s
+48 87 M
+(    json.dump\(confidence_and_possible_class_string_list_list, class_inference_log_file_io\)) s
+24 76 M (42:) s
+48 76 M
+(    class_inference_log_file_io.write\() s
+/Courier-Bold 10 10 SUF
+276 76 M
+('\\n') s
+/F-gs-font 10 10 SF
+300 76 M
+(\)) s
+24 65 M (43:) s
+24 54 M (44:) s
+24 43 M (45:) s
+/Courier-Bold 10 10 SUF
+48 43 M
+(class) s
+/F-gs-font 10 10 SF
+78 43 M
+( TypeInference:) s
+24 32 M (46:) s
+48 32 M
+(    ) s
+/Courier-Bold 10 10 SUF
+72 32 M
+(def) s
+/F-gs-font 10 10 SF
+90 32 M
+( ) s
+/Courier-Bold 10 10 SUF
+96 32 M
+(__init__) s
+/F-gs-font 10 10 SF
+144 32 M
+(\() s
+24 21 M (47:) s
+48 21 M
+(            self,) s
+24 10 M (48:) s
+48 10 M
+(            type_query_database: ClassQueryDatabase,) s
+_R
+S
+%%Page: (2) 2
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 2 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (2) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+24 527 M (49:) s
+48 527 M
+(            client: Client) s
+24 516 M (50:) s
+48 516 M
+(    \):) s
+24 505 M (51:) s
+48 505 M
+(        self.type_query_database = type_query_database) s
+24 494 M (52:) s
+48 494 M
+(        self.client = client) s
+24 483 M (53:) s
+24 472 M (54:) s
+48 472 M
+(        self.class_inference_cache: dict[) s
+24 461 M (55:) s
+48 461 M
+(            frozenset[ast.AST],) s
+24 450 M (56:) s
+48 450 M
+(            tuple[) s
+24 439 M (57:) s
+48 439 M
+(                list[tuple[float, TypeshedTypeAnnotation]],) s
+24 428 M (58:) s
+48 428 M
+(                bool) s
+24 417 M (59:) s
+48 417 M
+(            ]) s
+24 406 M (60:) s
+48 406 M
+(        ] = dict\(\)) s
+24 395 M (61:) s
+48 395 M
+(        self.type_inference_cache: dict[frozenset[ast.AST], TypeshedTypeAnnotation] = dict\(\)) s
+24 384 M (62:) s
+24 373 M (63:) s
+48 373 M
+(    ) s
+/Courier-Bold 10 10 SUF
+72 373 M
+(def) s
+/F-gs-font 10 10 SF
+90 373 M
+( ) s
+/Courier-Bold 10 10 SUF
+96 373 M
+(infer_classes_for_nodes) s
+/F-gs-font 10 10 SF
+234 373 M
+(\() s
+24 362 M (64:) s
+48 362 M
+(            self,) s
+24 351 M (65:) s
+48 351 M
+(            nodes: frozenset[ast.AST],) s
+24 340 M (66:) s
+48 340 M
+(            indent_level: int = 0,) s
+24 329 M (67:) s
+48 329 M
+(            cosine_similarity_threshold: float = 1e-1) s
+24 318 M (68:) s
+48 318 M
+(    \) -> tuple[) s
+24 307 M (69:) s
+48 307 M
+(        list[tuple[float, TypeshedClass]],  ) s
+/Courier-Oblique 10 10 SUF
+312 307 M
+(# class inference confidences and classs) s
+/F-gs-font 10 10 SF
+24 296 M (70:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 296 M
+(        bool  ) s
+/Courier-Oblique 10 10 SUF
+132 296 M
+(# whether runtime class can be instance-of types.NoneType) s
+/F-gs-font 10 10 SF
+24 285 M (71:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 285 M
+(    ]:) s
+24 274 M (72:) s
+48 274 M
+(        indent = ) s
+/Courier-Bold 10 10 SUF
+150 274 M
+('    ') s
+/F-gs-font 10 10 SF
+186 274 M
+( * indent_level) s
+24 263 M (73:) s
+24 252 M (74:) s
+48 252 M
+(        ) s
+/Courier-Oblique 10 10 SUF
+96 252 M
+(# Has a record in cache) s
+/F-gs-font 10 10 SF
+24 241 M (75:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 241 M
+(        ) s
+/Courier-Bold 10 10 SUF
+96 241 M
+(if) s
+/F-gs-font 10 10 SF
+108 241 M
+( nodes ) s
+/Courier-Bold 10 10 SUF
+150 241 M
+(in) s
+/F-gs-font 10 10 SF
+162 241 M
+( self.class_inference_cache:) s
+24 230 M (76:) s
+48 230 M
+(            logging.info\() s
+24 219 M (77:) s
+48 219 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 219 M
+('%sCache hit when performing class inference for %s.') s
+/F-gs-font 10 10 SF
+462 219 M
+(,) s
+24 208 M (78:) s
+48 208 M
+(                indent,) s
+24 197 M (79:) s
+48 197 M
+(                nodes) s
+24 186 M (80:) s
+48 186 M
+(            \)) s
+24 175 M (81:) s
+24 164 M (82:) s
+48 164 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 164 M
+(return) s
+/F-gs-font 10 10 SF
+156 164 M
+( self.class_inference_cache[nodes]) s
+24 153 M (83:) s
+48 153 M
+(        ) s
+/Courier-Bold 10 10 SUF
+96 153 M
+(else) s
+/F-gs-font 10 10 SF
+120 153 M
+(:) s
+24 142 M (84:) s
+48 142 M
+(            ) s
+/Courier-Oblique 10 10 SUF
+120 142 M
+(# No record in cache) s
+/F-gs-font 10 10 SF
+24 131 M (85:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 131 M
+(            logging.info\() s
+24 120 M (86:) s
+48 120 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 120 M
+('%sCache miss when performing class inference for %s.') s
+/F-gs-font 10 10 SF
+468 120 M
+(,) s
+24 109 M (87:) s
+48 109 M
+(                indent,) s
+24 98 M (88:) s
+48 98 M
+(                nodes) s
+24 87 M (89:) s
+48 87 M
+(            \)) s
+24 76 M (90:) s
+24 65 M (91:) s
+48 65 M
+(            ) s
+/Courier-Oblique 10 10 SUF
+120 65 M
+(# Determine whether it can be None.) s
+/F-gs-font 10 10 SF
+24 54 M (92:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+24 43 M (93:) s
+48 43 M
+(            can_be_none: bool = False) s
+24 32 M (94:) s
+48 32 M
+(            non_none_instance_classes: set[RuntimeClass] = set\(\)) s
+24 21 M (95:) s
+24 10 M (96:) s
+48 10 M
+(            runtime_term_sharing_node_disjoint_set_top_node_set = {) s
+_R
+S
+%%Page: (3) 3
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 3 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (3) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+24 527 M (97:) s
+48 527 M
+(                typing_constraints_singleton.runtime_term_sharing_node_disjoint_set.find\(node\)) s
+24 516 M (98:) s
+48 516 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 516 M
+(for) s
+/F-gs-font 10 10 SF
+162 516 M
+( node ) s
+/Courier-Bold 10 10 SUF
+198 516 M
+(in) s
+/F-gs-font 10 10 SF
+210 516 M
+( nodes) s
+24 505 M (99:) s
+48 505 M
+(            }) s
+18 494 M (100:) s
+18 483 M (101:) s
+48 483 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 483 M
+(for) s
+/F-gs-font 10 10 SF
+138 483 M
+( runtime_term_sharing_node_disjoint_set_top_node ) s
+/Courier-Bold 10 10 SUF
+432 483 M
+(in) s
+/F-gs-font 10 10 SF
+444 483 M
+( runtime_term_sharing_node_disjoint_set_top_n) s
+18 472 M (102:) s
+48 472 M
+(                runtime_term_set = \\) s
+18 461 M (103:) s
+48 461 M
+(                typing_constraints_singleton.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets) s
+18 450 M (104:) s
+48 450 M
+(                    runtime_term_sharing_node_disjoint_set_top_node) s
+18 439 M (105:) s
+48 439 M
+(                ]) s
+18 428 M (106:) s
+48 428 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 428 M
+(for) s
+/F-gs-font 10 10 SF
+162 428 M
+( runtime_term ) s
+/Courier-Bold 10 10 SUF
+246 428 M
+(in) s
+/F-gs-font 10 10 SF
+258 428 M
+( runtime_term_set:) s
+18 417 M (107:) s
+48 417 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 417 M
+(if) s
+/F-gs-font 10 10 SF
+180 417 M
+( isinstance\(runtime_term, Instance\):) s
+18 406 M (108:) s
+48 406 M
+(                        instance_class = runtime_term.class_) s
+18 395 M (109:) s
+48 395 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 395 M
+(if) s
+/F-gs-font 10 10 SF
+204 395 M
+( isinstance\(instance_class, type\(None\)\):) s
+18 384 M (110:) s
+48 384 M
+(                            can_be_none = True) s
+18 373 M (111:) s
+48 373 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 373 M
+(else) s
+/F-gs-font 10 10 SF
+216 373 M
+(:) s
+18 362 M (112:) s
+48 362 M
+(                            non_none_instance_classes.add\(instance_class\)) s
+18 351 M (113:) s
+18 340 M (114:) s
+48 340 M
+(            logging.info\() s
+18 329 M (115:) s
+48 329 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 329 M
+('%sCan %s be None? %s') s
+/F-gs-font 10 10 SF
+276 329 M
+(,) s
+18 318 M (116:) s
+48 318 M
+(                indent,) s
+18 307 M (117:) s
+48 307 M
+(                nodes, can_be_none) s
+18 296 M (118:) s
+48 296 M
+(            \)) s
+18 285 M (119:) s
+18 274 M (120:) s
+48 274 M
+(            ) s
+/Courier-Oblique 10 10 SUF
+120 274 M
+(# Initialize aggregate attribute counter.) s
+/F-gs-font 10 10 SF
+18 263 M (121:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 263 M
+(            aggregate_attribute_counter: Counter[str] = Counter\(\)) s
+18 252 M (122:) s
+18 241 M (123:) s
+48 241 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 241 M
+(for) s
+/F-gs-font 10 10 SF
+138 241 M
+( breadth_first_search_layer ) s
+/Courier-Bold 10 10 SUF
+306 241 M
+(in) s
+/F-gs-font 10 10 SF
+318 241 M
+( breadth_first_search_layers\() s
+18 230 M (124:) s
+48 230 M
+(                    typing_constraints_singleton.node_containment_graph,) s
+18 219 M (125:) s
+48 219 M
+(                    nodes) s
+18 208 M (126:) s
+48 208 M
+(            \):) s
+18 197 M (127:) s
+48 197 M
+(                logging.info\() s
+18 186 M (128:) s
+48 186 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 186 M
+('%sCurrent breadth-first-search layer: %s') s
+/F-gs-font 10 10 SF
+420 186 M
+(, indent, breadth_first_search_layer) s
+18 175 M (129:) s
+48 175 M
+(                \)) s
+18 164 M (130:) s
+18 153 M (131:) s
+48 153 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 153 M
+(for) s
+/F-gs-font 10 10 SF
+162 153 M
+( node ) s
+/Courier-Bold 10 10 SUF
+198 153 M
+(in) s
+/F-gs-font 10 10 SF
+210 153 M
+( breadth_first_search_layer:) s
+18 142 M (132:) s
+48 142 M
+(                    attribute_counter = typing_constraints_singleton.nodes_to_attribute_counters[) s
+18 131 M (133:) s
+48 131 M
+(                        node) s
+18 120 M (134:) s
+48 120 M
+(                    ]) s
+18 109 M (135:) s
+18 98 M (136:) s
+48 98 M
+(                    logging.info\() s
+18 87 M (137:) s
+48 87 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 87 M
+('%sAttribute counter for %s: %s') s
+/F-gs-font 10 10 SF
+384 87 M
+(,) s
+18 76 M (138:) s
+48 76 M
+(                        indent,) s
+18 65 M (139:) s
+48 65 M
+(                        node_textual_representation_singleton.node_to_textual_representation_dict.get\() s
+18 54 M (140:) s
+48 54 M
+(                            node,) s
+18 43 M (141:) s
+48 43 M
+(                            str\(node\)) s
+18 32 M (142:) s
+48 32 M
+(                        \),) s
+18 21 M (143:) s
+48 21 M
+(                        attribute_counter) s
+18 10 M (144:) s
+48 10 M
+(                    \)) s
+_R
+S
+%%Page: (4) 4
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 4 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (4) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+18 527 M (145:) s
+18 516 M (146:) s
+48 516 M
+(                    aggregate_attribute_counter.update\(attribute_counter\)) s
+18 505 M (147:) s
+18 494 M (148:) s
+48 494 M
+(            logging.info\() s
+18 483 M (149:) s
+48 483 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 483 M
+('%sAggregate attribute counter for %s: %s') s
+/F-gs-font 10 10 SF
+396 483 M
+(,) s
+18 472 M (150:) s
+48 472 M
+(                indent,) s
+18 461 M (151:) s
+48 461 M
+(                nodes,) s
+18 450 M (152:) s
+48 450 M
+(                aggregate_attribute_counter) s
+18 439 M (153:) s
+48 439 M
+(            \)) s
+18 428 M (154:) s
+18 417 M (155:) s
+48 417 M
+(            ) s
+/Courier-Oblique 10 10 SUF
+120 417 M
+(# Query possible classes.) s
+/F-gs-font 10 10 SF
+18 406 M (156:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+18 395 M (157:) s
+48 395 M
+(            confidence_and_possible_class_list: list[tuple[float, TypeshedClass]] = list\(\)) s
+18 384 M (158:) s
+18 373 M (159:) s
+48 373 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 373 M
+(if) s
+/F-gs-font 10 10 SF
+132 373 M
+( \() s
+18 362 M (160:) s
+48 362 M
+(                    switches_singleton.shortcut_single_class_covering_all_attributes) s
+18 351 M (161:) s
+48 351 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 351 M
+(and) s
+/F-gs-font 10 10 SF
+186 351 M
+( len\(non_none_instance_classes\) == 1) s
+18 340 M (162:) s
+48 340 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 340 M
+(and) s
+/F-gs-font 10 10 SF
+186 340 M
+( set\(aggregate_attribute_counter.keys\(\)\).issubset\() s
+18 329 M (163:) s
+48 329 M
+(                        get_attributes_in_runtime_class\(next\(iter\(non_none_instance_classes\)\)\)) s
+18 318 M (164:) s
+48 318 M
+(                    \)) s
+18 307 M (165:) s
+48 307 M
+(            \):) s
+18 296 M (166:) s
+18 285 M (167:) s
+48 285 M
+(                single_instance_class_covering_all_attributes = next\(iter\(non_none_instance_classes\)\)) s
+18 274 M (168:) s
+48 274 M
+(                confidence_and_possible_class_list.append\() s
+18 263 M (169:) s
+48 263 M
+(                    \(1, from_runtime_class\(single_instance_class_covering_all_attributes\)\)) s
+18 252 M (170:) s
+48 252 M
+(                \)) s
+18 241 M (171:) s
+48 241 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 241 M
+(else) s
+/F-gs-font 10 10 SF
+144 241 M
+(:) s
+18 230 M (172:) s
+48 230 M
+(                \() s
+18 219 M (173:) s
+48 219 M
+(                    possible_class_ndarray,) s
+18 208 M (174:) s
+48 208 M
+(                    cosine_similarity_ndarray,) s
+18 197 M (175:) s
+48 197 M
+(                \) = self.type_query_database.query\(aggregate_attribute_counter\)) s
+18 186 M (176:) s
+18 175 M (177:) s
+48 175 M
+(                nonzero_cosine_similarity_indices = \(cosine_similarity_ndarray > cosine_similarity_threshold\)) s
+18 164 M (178:) s
+18 153 M (179:) s
+48 153 M
+(                selected_possible_class_ndarray = possible_class_ndarray[nonzero_cosine_similarity_indices]) s
+18 142 M (180:) s
+48 142 M
+(                selected_cosine_similarity_ndarray = cosine_similarity_ndarray[nonzero_cosine_similarity_indice) s
+18 131 M (181:) s
+18 120 M (182:) s
+48 120 M
+(                argsort = np.argsort\(selected_cosine_similarity_ndarray\)) s
+18 109 M (183:) s
+18 98 M (184:) s
+48 98 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 98 M
+(for) s
+/F-gs-font 10 10 SF
+162 98 M
+( i ) s
+/Courier-Bold 10 10 SUF
+180 98 M
+(in) s
+/F-gs-font 10 10 SF
+192 98 M
+( argsort[-1::-1]:) s
+18 87 M (185:) s
+48 87 M
+(                    possible_class = selected_possible_class_ndarray[i]) s
+18 76 M (186:) s
+48 76 M
+(                    cosine_similarity = float\(selected_cosine_similarity_ndarray[i]\)) s
+18 65 M (187:) s
+18 54 M (188:) s
+48 54 M
+(                    confidence_and_possible_class_list.append\() s
+18 43 M (189:) s
+48 43 M
+(                        \(cosine_similarity, possible_class\)) s
+18 32 M (190:) s
+48 32 M
+(                    \)) s
+18 21 M (191:) s
+18 10 M (192:) s
+48 10 M
+(                logging.info\() s
+_R
+S
+%%Page: (5) 5
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 5 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (5) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+18 527 M (193:) s
+48 527 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 527 M
+('%sPossible types queried for %s based on attributes: %s') s
+/F-gs-font 10 10 SF
+510 527 M
+(,) s
+18 516 M (194:) s
+48 516 M
+(                    indent,) s
+18 505 M (195:) s
+48 505 M
+(                    nodes,) s
+18 494 M (196:) s
+48 494 M
+(                    confidence_and_possible_class_list) s
+18 483 M (197:) s
+48 483 M
+(                \)) s
+18 472 M (198:) s
+18 461 M (199:) s
+48 461 M
+(            return_value = confidence_and_possible_class_list, can_be_none) s
+18 450 M (200:) s
+18 439 M (201:) s
+48 439 M
+(            self.class_inference_cache[nodes] = return_value) s
+18 428 M (202:) s
+18 417 M (203:) s
+48 417 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 417 M
+(return) s
+/F-gs-font 10 10 SF
+156 417 M
+( return_value) s
+18 406 M (204:) s
+18 395 M (205:) s
+48 395 M
+(    ) s
+/Courier-Bold 10 10 SUF
+72 395 M
+(def) s
+/F-gs-font 10 10 SF
+90 395 M
+( ) s
+/Courier-Bold 10 10 SUF
+96 395 M
+(infer_type) s
+/F-gs-font 10 10 SF
+156 395 M
+(\() s
+18 384 M (206:) s
+48 384 M
+(            self,) s
+18 373 M (207:) s
+48 373 M
+(            node_set: frozenset[ast.AST],) s
+18 362 M (208:) s
+48 362 M
+(            depth: int = 0,) s
+18 351 M (209:) s
+48 351 M
+(            cosine_similarity_threshold: float = 1e-1,) s
+18 340 M (210:) s
+48 340 M
+(            depth_limit: int = 3,) s
+18 329 M (211:) s
+48 329 M
+(            first_level_class_inference_failed_fallback: TypeshedClass = TypeshedClass\() s
+/Courier-Bold 10 10 SUF
+570 329 M
+('typing') s
+/F-gs-font 10 10 SF
+618 329 M
+(, ) s
+/Courier-Bold 10 10 SUF
+630 329 M
+('Any') s
+/F-gs-font 10 10 SF
+660 329 M
+(\),) s
+18 318 M (212:) s
+48 318 M
+(            non_first_level_class_inference_failed_fallback: TypeshedClass = TypeshedClass\() s
+/Courier-Bold 10 10 SUF
+594 318 M
+('typing') s
+/F-gs-font 10 10 SF
+642 318 M
+(, ) s
+/Courier-Bold 10 10 SUF
+654 318 M
+('Any') s
+/F-gs-font 10 10 SF
+684 318 M
+(\),) s
+18 307 M (213:) s
+48 307 M
+(            class_inference_log_file_io: typing.Optional[typing.IO] = None) s
+18 296 M (214:) s
+48 296 M
+(    \) -> TypeshedTypeAnnotation:) s
+18 285 M (215:) s
+48 285 M
+(        indent = ) s
+/Courier-Bold 10 10 SUF
+150 285 M
+('    ') s
+/F-gs-font 10 10 SF
+186 285 M
+( * depth) s
+18 274 M (216:) s
+18 263 M (217:) s
+48 263 M
+(        ) s
+/Courier-Oblique 10 10 SUF
+96 263 M
+(# Has a record in cache) s
+/F-gs-font 10 10 SF
+18 252 M (218:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 252 M
+(        ) s
+/Courier-Bold 10 10 SUF
+96 252 M
+(if) s
+/F-gs-font 10 10 SF
+108 252 M
+( node_set ) s
+/Courier-Bold 10 10 SUF
+168 252 M
+(in) s
+/F-gs-font 10 10 SF
+180 252 M
+( self.type_inference_cache:) s
+18 241 M (219:) s
+48 241 M
+(            logging.info\() s
+18 230 M (220:) s
+48 230 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 230 M
+('%sCache hit when performing type inference for %s.') s
+/F-gs-font 10 10 SF
+456 230 M
+(,) s
+18 219 M (221:) s
+48 219 M
+(                indent,) s
+18 208 M (222:) s
+48 208 M
+(                node_set) s
+18 197 M (223:) s
+48 197 M
+(            \)) s
+18 186 M (224:) s
+18 175 M (225:) s
+48 175 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 175 M
+(return) s
+/F-gs-font 10 10 SF
+156 175 M
+( self.type_inference_cache[node_set]) s
+18 164 M (226:) s
+48 164 M
+(        ) s
+/Courier-Bold 10 10 SUF
+96 164 M
+(else) s
+/F-gs-font 10 10 SF
+120 164 M
+(:) s
+18 153 M (227:) s
+48 153 M
+(            ) s
+/Courier-Oblique 10 10 SUF
+120 153 M
+(# No record in cache) s
+/F-gs-font 10 10 SF
+18 142 M (228:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 142 M
+(            logging.info\() s
+18 131 M (229:) s
+48 131 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 131 M
+('%sCache miss when performing type inference for %s.') s
+/F-gs-font 10 10 SF
+462 131 M
+(,) s
+18 120 M (230:) s
+48 120 M
+(                indent,) s
+18 109 M (231:) s
+48 109 M
+(                node_set) s
+18 98 M (232:) s
+48 98 M
+(            \)) s
+18 87 M (233:) s
+18 76 M (234:) s
+48 76 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 76 M
+(if) s
+/F-gs-font 10 10 SF
+132 76 M
+( depth > depth_limit:) s
+18 65 M (235:) s
+48 65 M
+(                logging.error\() s
+18 54 M (236:) s
+48 54 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 54 M
+('%sRecursive type inference exceeded depth limit of %s. Returning %s.') s
+/F-gs-font 10 10 SF
+588 54 M
+(,) s
+18 43 M (237:) s
+48 43 M
+(                    indent,) s
+18 32 M (238:) s
+48 32 M
+(                    depth_limit,) s
+18 21 M (239:) s
+48 21 M
+(                    non_first_level_class_inference_failed_fallback) s
+18 10 M (240:) s
+48 10 M
+(                \)) s
+_R
+S
+%%Page: (6) 6
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 6 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (6) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+18 527 M (241:) s
+18 516 M (242:) s
+48 516 M
+(                return_value = non_first_level_class_inference_failed_fallback) s
+18 505 M (243:) s
+48 505 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 505 M
+(else) s
+/F-gs-font 10 10 SF
+144 505 M
+(:) s
+18 494 M (244:) s
+48 494 M
+(                ) s
+/Courier-Oblique 10 10 SUF
+144 494 M
+(# Part 1: Infer possible classes.) s
+/F-gs-font 10 10 SF
+18 483 M (245:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 483 M
+(                logging.info\() s
+18 472 M (246:) s
+48 472 M
+(                    ) s
+/Courier-Bold 10 10 SUF
+168 472 M
+('%sPerforming class inference for %s.') s
+/F-gs-font 10 10 SF
+396 472 M
+(,) s
+18 461 M (247:) s
+48 461 M
+(                    indent,) s
+18 450 M (248:) s
+48 450 M
+(                    node_set) s
+18 439 M (249:) s
+48 439 M
+(                \)) s
+18 428 M (250:) s
+18 417 M (251:) s
+48 417 M
+(                \() s
+18 406 M (252:) s
+48 406 M
+(                    confidence_and_possible_class_list,) s
+18 395 M (253:) s
+48 395 M
+(                    can_be_none) s
+18 384 M (254:) s
+48 384 M
+(                \) = self.infer_classes_for_nodes\() s
+18 373 M (255:) s
+48 373 M
+(                    node_set,) s
+18 362 M (256:) s
+48 362 M
+(                    depth + 1,) s
+18 351 M (257:) s
+48 351 M
+(                    cosine_similarity_threshold) s
+18 340 M (258:) s
+48 340 M
+(                \)) s
+18 329 M (259:) s
+18 318 M (260:) s
+48 318 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 318 M
+(if) s
+/F-gs-font 10 10 SF
+156 318 M
+( class_inference_log_file_io ) s
+/Courier-Bold 10 10 SUF
+330 318 M
+(is) s
+/F-gs-font 10 10 SF
+342 318 M
+( ) s
+/Courier-Bold 10 10 SUF
+348 318 M
+(not) s
+/F-gs-font 10 10 SF
+366 318 M
+( None:) s
+18 307 M (261:) s
+48 307 M
+(                    dump_confidence_and_possible_class_list\() s
+18 296 M (262:) s
+48 296 M
+(                        confidence_and_possible_class_list,) s
+18 285 M (263:) s
+48 285 M
+(                        class_inference_log_file_io) s
+18 274 M (264:) s
+48 274 M
+(                    \)) s
+18 263 M (265:) s
+18 252 M (266:) s
+48 252 M
+(                ) s
+/Courier-Oblique 10 10 SUF
+144 252 M
+(# Part 2: Infer type variables for possible classes to get final type inference results.) s
+/F-gs-font 10 10 SF
+18 241 M (267:) s
+/Courier-Oblique 10 10 SUF
+/F-gs-font 10 10 SF
+48 241 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 241 M
+(if) s
+/F-gs-font 10 10 SF
+156 241 M
+( ) s
+/Courier-Bold 10 10 SUF
+162 241 M
+(not) s
+/F-gs-font 10 10 SF
+180 241 M
+( confidence_and_possible_class_list:) s
+18 230 M (268:) s
+48 230 M
+(                    top_class_prediction = \() s
+18 219 M (269:) s
+48 219 M
+(                        first_level_class_inference_failed_fallback) s
+18 208 M (270:) s
+48 208 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 208 M
+(if) s
+/F-gs-font 10 10 SF
+204 208 M
+( depth == 0) s
+18 197 M (271:) s
+48 197 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 197 M
+(else) s
+/F-gs-font 10 10 SF
+216 197 M
+( non_first_level_class_inference_failed_fallback) s
+18 186 M (272:) s
+48 186 M
+(                    \)) s
+18 175 M (273:) s
+18 164 M (274:) s
+48 164 M
+(                    logging.info\() s
+18 153 M (275:) s
+48 153 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 153 M
+('%sNo possible classes queried for %s based on attributes. Using %s.') s
+/F-gs-font 10 10 SF
+606 153 M
+(,) s
+18 142 M (276:) s
+48 142 M
+(                        indent,) s
+18 131 M (277:) s
+48 131 M
+(                        node_set,) s
+18 120 M (278:) s
+48 120 M
+(                        top_class_prediction) s
+18 109 M (279:) s
+48 109 M
+(                    \)) s
+18 98 M (280:) s
+48 98 M
+(                ) s
+/Courier-Bold 10 10 SUF
+144 98 M
+(else) s
+/F-gs-font 10 10 SF
+168 98 M
+(:) s
+18 87 M (281:) s
+48 87 M
+(                    \() s
+18 76 M (282:) s
+48 76 M
+(                        top_class_prediction_confidence,) s
+18 65 M (283:) s
+48 65 M
+(                        top_class_prediction) s
+18 54 M (284:) s
+48 54 M
+(                    \) = confidence_and_possible_class_list[0]) s
+18 43 M (285:) s
+18 32 M (286:) s
+48 32 M
+(                    logging.info\() s
+18 21 M (287:) s
+48 21 M
+(                        ) s
+/Courier-Bold 10 10 SUF
+192 21 M
+('%sTop class prediction: %s') s
+/F-gs-font 10 10 SF
+360 21 M
+(,) s
+18 10 M (288:) s
+48 10 M
+(                        indent,) s
+_R
+S
+%%Page: (7) 7
+%%BeginPageSetup
+_S
+90 rotate
+36 -594 translate
+/pagenum 7 def
+/fname (type_inference.py) def
+/fdir (.) def
+/ftail (type_inference.py) def
+% User defined strings:
+/pagenumstr (7) def
+/moddatestr (11/26/23) def
+/modtimestr (15:05:21) def
+/user_header_p false def
+/user_footer_p false def
+%%EndPageSetup
+do_header
+18 527 M (289:) s
+48 527 M
+(                        top_class_prediction) s
+18 516 M (290:) s
+48 516 M
+(                    \)) s
+18 505 M (291:) s
+18 494 M (292:) s
+48 494 M
+(                return_value = top_class_prediction) s
+18 483 M (293:) s
+18 472 M (294:) s
+48 472 M
+(            self.type_inference_cache[node_set] = return_value) s
+18 461 M (295:) s
+18 450 M (296:) s
+48 450 M
+(            ) s
+/Courier-Bold 10 10 SUF
+120 450 M
+(return) s
+/F-gs-font 10 10 SF
+156 450 M
+( return_value) s
+_R
+S
+%%Trailer
+%%Pages: 7
+%%DocumentNeededResources: font Times-Roman Courier-Oblique Courier-Bold 
+%%+ font Courier Times-Bold 
+%%EOF

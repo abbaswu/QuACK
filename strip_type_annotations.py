@@ -31,9 +31,33 @@ def is_valid_python_code(code: str) -> bool:
         return False
 
 
-if __name__ == '__main__':
+def strip_type_annotations(directory: str) -> None:
     type_annotation_stripper = TypeAnnotationStripper()
+    for path, directory_names, file_names in os.walk(directory):
+        for file_name in file_names:
+            if file_name.endswith('.py'):
+                file_path = os.path.join(path, file_name)
+                try:
+                    fp = open(file_path, 'r')
+                    code: str = fp.read()
+                    fp.close()
 
+                    module: ast.Module = ast.parse(code)
+                    transformed_module = type_annotation_stripper.visit(module)
+                    transformed_code = ast.unparse(transformed_module)
+                    assert is_valid_python_code(transformed_code)
+
+                    fp = open(file_path, 'w')
+                    fp.write(transformed_code)
+                    fp.write('\n')
+                    fp.close()
+
+                    logging.info('Successfully stripped type annotations in file %s', file_path)
+                except Exception:
+                    logging.exception('Failed to handle file %s', file_path)
+
+
+if __name__ == '__main__':
     # set up logging
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -44,25 +68,5 @@ if __name__ == '__main__':
 
     directory: str = args.directory
 
-    for path, directory_names, file_names in os.walk(directory):
-        for file_name in file_names:
-            if file_name.endswith('.py'):
-                file_path = os.path.join(path, file_name)
-                try:
-                    fp = open(file_path, 'r')
-                    code: str = fp.read()
-                    fp.close()
-                    
-                    module: ast.Module = ast.parse(code)
-                    transformed_module = type_annotation_stripper.visit(module)
-                    transformed_code = ast.unparse(transformed_module)
-                    assert is_valid_python_code(transformed_code)
-                    
-                    fp = open(file_path, 'w')
-                    fp.write(transformed_code)
-                    fp.write('\n')
-                    fp.close()
+    strip_type_annotations(directory)
 
-                    logging.info('Successfully stripped type annotations in file %s', file_path)
-                except Exception:
-                    logging.exception('Failed to handle file %s', file_path)

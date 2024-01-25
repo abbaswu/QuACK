@@ -72,12 +72,13 @@ def get_definitions_to_runtime_terms_mappings(
                 for k_, v_ in get_comprehensive_dict_for_runtime_class(unwrapped_v).items():
                     unwrapped_v_ = unwrap(v_)
                     if isinstance(unwrapped_v_, UnwrappedRuntimeFunction):
-                        real_name_tuples_of_unwrapped_runtime_functions[
-                            (real_module_name, real_class_name, unwrapped_v_.__name__)] = unwrapped_v_
+                        real_name_tuples_of_unwrapped_runtime_functions[(real_module_name, real_class_name, unwrapped_v_.__name__)] = unwrapped_v_
 
             if isinstance(unwrapped_v, UnwrappedRuntimeFunction):
-                real_name_tuples_of_unwrapped_runtime_functions[
-                    (unwrapped_v.__module__, unwrapped_v.__name__)] = unwrapped_v
+                try:
+                    real_name_tuples_of_unwrapped_runtime_functions[(unwrapped_v.__module__, unwrapped_v.__name__)] = unwrapped_v
+                except AttributeError:
+                    logging.error('Failed to get the module and name of runtime value %s', unwrapped_v)
 
         ScopedNodeVisitor(get_scoped_node_visitor_callback(module_name)).visit(module_node)
 

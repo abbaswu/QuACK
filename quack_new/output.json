@@ -1,0 +1,2087 @@
+{
+    "flake8": {
+        "global": {
+            "configure_logging": {
+                "return": [
+                    "typing.Any"
+                ],
+                "verbosity": [
+                    "builtins.int"
+                ],
+                "filename": [
+                    "builtins.str"
+                ],
+                "logformat": [
+                    "builtins.str"
+                ]
+            }
+        }
+    },
+    "flake8.statistics": {
+        "Statistics": {
+            "error_codes": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "statistics_for": {
+                "prefix": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ]
+            },
+            "record": {
+                "error": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "Key": {
+            "create_from": {
+                "return": [
+                    "typing.Any"
+                ],
+                "error": [
+                    "builtins.SystemExit"
+                ]
+            },
+            "matches": {
+                "return": [
+                    "typing.Any"
+                ],
+                "prefix": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "builtins.object"
+                ]
+            }
+        },
+        "Statistic": {
+            "create_from": {
+                "return": [
+                    "typing.Any"
+                ],
+                "error": [
+                    "flake8.style_guide.Violation"
+                ]
+            },
+            "__init__": {
+                "error_code": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "message": [
+                    "typing.Any"
+                ],
+                "count": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.exceptions": {
+        "FailedToLoadPlugin": {
+            "__init__": {
+                "plugin_name": [
+                    "typing.Any"
+                ],
+                "exception": [
+                    "typing.Any"
+                ]
+            },
+            "__str__": {
+                "return": [
+                    "builtins.dict"
+                ]
+            }
+        },
+        "PluginRequestedUnknownParameters": {
+            "__init__": {
+                "plugin": [
+                    "typing.Any"
+                ],
+                "exception": [
+                    "typing.Any"
+                ]
+            },
+            "__str__": {
+                "return": [
+                    "builtins.dict"
+                ]
+            }
+        },
+        "PluginExecutionFailed": {
+            "__str__": {
+                "return": [
+                    "builtins.dict"
+                ]
+            },
+            "__init__": {
+                "plugin": [
+                    "typing.Any"
+                ],
+                "exception": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.checker": {
+        "global": {
+            "find_offset": {
+                "return": [
+                    "builtins.tuple"
+                ],
+                "offset": [
+                    "builtins.tuple"
+                ],
+                "mapping": [
+                    "typing.Iterable"
+                ]
+            },
+            "_run_checks": {
+                "return": [
+                    "typing.Any"
+                ],
+                "checker": [
+                    "flake8.checker.FileChecker"
+                ]
+            },
+            "_try_initialize_processpool": {
+                "return": [
+                    "typing.Any"
+                ],
+                "job_count": [
+                    "typing.Any"
+                ]
+            },
+            "calculate_pool_chunksize": {
+                "return": [
+                    "typing.Any"
+                ],
+                "num_checkers": [
+                    "builtins.int"
+                ],
+                "num_jobs": [
+                    "builtins.int"
+                ]
+            },
+            "_multiprocessing_is_fork": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "Manager": {
+            "_handle_results": {
+                "return": [
+                    "builtins.int"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "results": [
+                    "typing.Iterable"
+                ]
+            },
+            "run_parallel": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "style_guide": [
+                    "flake8.api.legacy.StyleGuide"
+                ],
+                "arguments": [
+                    "typing.Any"
+                ],
+                "checker_plugins": [
+                    "typing.Any"
+                ]
+            },
+            "is_path_excluded": {
+                "return": [
+                    "builtins.int"
+                ],
+                "path": [
+                    "builtins.str"
+                ]
+            },
+            "report": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "make_checkers": {
+                "return": [
+                    "typing.Any"
+                ],
+                "paths": [
+                    "typing.Any"
+                ]
+            },
+            "_job_count": {
+                "return": [
+                    "builtins.int"
+                ]
+            },
+            "start": {
+                "paths": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "FileChecker": {
+            "run_physical_checks": {
+                "physical_line": [
+                    "typing.Any"
+                ]
+            },
+            "handle_newline": {
+                "token_type": [
+                    "builtins.int"
+                ]
+            },
+            "run_check": {
+                "return": [
+                    "typing.Any"
+                ],
+                "plugin": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            },
+            "run_checks": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "__init__": {
+                "filename": [
+                    "typing.Any"
+                ],
+                "checks": [
+                    "typing.Any"
+                ],
+                "options": [
+                    "typing.Any"
+                ]
+            },
+            "_make_processor": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "check_physical_eol": {
+                "token": [
+                    "_typeshed.SupportsGetItem"
+                ],
+                "prev_physical": [
+                    "typing.Any"
+                ]
+            },
+            "report": {
+                "return": [
+                    "typing.Any"
+                ],
+                "error_code": [
+                    "typing.Any"
+                ],
+                "line_number": [
+                    "typing.Any"
+                ],
+                "column": [
+                    "typing.Any"
+                ],
+                "text": [
+                    "re.Pattern"
+                ]
+            },
+            "_extract_syntax_information": {
+                "return": [
+                    "builtins.tuple"
+                ],
+                "exception": [
+                    "builtins.SyntaxError"
+                ]
+            },
+            "run_logical_checks": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "__repr__": {
+                "return": [
+                    "builtins.str"
+                ]
+            }
+        }
+    },
+    "flake8.processor": {
+        "global": {
+            "token_is_newline": {
+                "return": [
+                    "builtins.int"
+                ],
+                "token": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            },
+            "is_multiline_string": {
+                "return": [
+                    "typing.Any"
+                ],
+                "token": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            },
+            "expand_indent": {
+                "return": [
+                    "builtins.int"
+                ],
+                "line": [
+                    "builtins.bytes"
+                ]
+            },
+            "log_token": {
+                "log": [
+                    "logging.LoggerAdapter"
+                ],
+                "token": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            },
+            "count_parentheses": {
+                "return": [
+                    "builtins.int"
+                ],
+                "current_parentheses_count": [
+                    "builtins.int"
+                ],
+                "token_text": [
+                    "typing.Any"
+                ]
+            },
+            "mutate_string": {
+                "return": [
+                    "builtins.int"
+                ],
+                "text": [
+                    "builtins.int"
+                ]
+            },
+            "is_eol_token": {
+                "return": [
+                    "typing.Any"
+                ],
+                "token": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            }
+        },
+        "FileProcessor": {
+            "build_logical_line": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "next_line": {
+                "return": [
+                    "builtins.str"
+                ]
+            },
+            "build_logical_line_tokens": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "should_ignore_file": {
+                "return": [
+                    "builtins.int"
+                ]
+            },
+            "keyword_arguments_for": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "parameters": [
+                    "typing.Mapping"
+                ],
+                "arguments": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "filename": [
+                    "typing.Any"
+                ],
+                "options": [
+                    "flake8.processor.FileProcessor"
+                ],
+                "lines": [
+                    "typing.Any"
+                ]
+            },
+            "file_tokens": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "_noqa_line_range": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "min_line": [
+                    "builtins.int"
+                ],
+                "max_line": [
+                    "builtins.int"
+                ]
+            },
+            "inside_multiline": {
+                "line_number": [
+                    "typing.Any"
+                ]
+            },
+            "read_lines": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "noqa_line_for": {
+                "return": [
+                    "typing.Any"
+                ],
+                "line_number": [
+                    "typing.Any"
+                ]
+            },
+            "read_lines_from_stdin": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "read_lines_from_filename": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "build_ast": {
+                "return": [
+                    "ast.MatchSingleton"
+                ]
+            },
+            "update_checker_state_for": {
+                "plugin": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            },
+            "update_state": {
+                "mapping": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            },
+            "strip_utf_bom": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "split_line": {
+                "token": [
+                    "_typeshed.SupportsGetItem"
+                ]
+            }
+        }
+    },
+    "flake8.utils": {
+        "global": {
+            "parse_unified_diff": {
+                "return": [
+                    "importlib.metadata._collections.FreezableDefaultDict"
+                ],
+                "diff": [
+                    "typing.Any"
+                ]
+            },
+            "_default_predicate": {
+                "return": [
+                    "builtins.int"
+                ]
+            },
+            "stdin_get_value": {
+                "return": [
+                    "builtins.str"
+                ]
+            },
+            "get_python_version": {
+                "return": [
+                    "builtins.str"
+                ]
+            },
+            "normalize_paths": {
+                "return": [
+                    "builtins.list"
+                ],
+                "paths": [
+                    "builtins.list"
+                ],
+                "parent": [
+                    "builtins.str"
+                ]
+            },
+            "_tokenize_files_to_codes_mapping": {
+                "return": [
+                    "builtins.list"
+                ],
+                "value": [
+                    "typing.Sized"
+                ]
+            },
+            "filenames_from": {
+                "return": [
+                    "typing.Generator"
+                ],
+                "arg": [
+                    "builtins.str"
+                ],
+                "predicate": [
+                    "typing.Any"
+                ]
+            },
+            "normalize_path": {
+                "return": [
+                    "builtins.str"
+                ],
+                "path": [
+                    "typing.Collection"
+                ],
+                "parent": [
+                    "builtins.str"
+                ]
+            },
+            "is_using_stdin": {
+                "return": [
+                    "builtins.int"
+                ],
+                "paths": [
+                    "typing.Collection"
+                ]
+            },
+            "parse_comma_separated_list": {
+                "return": [
+                    "builtins.list"
+                ],
+                "value": [
+                    "builtins.str"
+                ],
+                "regexp": [
+                    "re.Pattern"
+                ]
+            },
+            "stdin_get_lines": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "is_windows": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "fnmatch": {
+                "return": [
+                    "builtins.int"
+                ],
+                "filename": [
+                    "builtins.str"
+                ],
+                "patterns": [
+                    "typing.Iterable"
+                ]
+            },
+            "parse_files_to_codes_mapping": {
+                "return": [
+                    "builtins.list"
+                ],
+                "value_": [
+                    "builtins.str"
+                ]
+            },
+            "parameters_for": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "plugin": [
+                    "flake8.exceptions.PluginExecutionFailed"
+                ]
+            },
+            "matches_filename": {
+                "return": [
+                    "builtins.int"
+                ],
+                "path": [
+                    "builtins.str"
+                ],
+                "patterns": [
+                    "typing.Iterable"
+                ],
+                "log_message": [
+                    "typing.Any"
+                ],
+                "logger": [
+                    "logging.LoggerAdapter"
+                ]
+            }
+        }
+    },
+    "flake8.style_guide": {
+        "global": {
+            "find_first_match": {
+                "return": [
+                    "typing.Any"
+                ],
+                "error_code": [
+                    "builtins.bytes"
+                ],
+                "code_list": [
+                    "typing.Iterable"
+                ]
+            },
+            "find_noqa": {
+                "return": [
+                    "re.Match"
+                ],
+                "physical_line": [
+                    "builtins.bytearray"
+                ]
+            },
+            "find_more_specific": {
+                "return": [
+                    "flake8.style_guide.Decision"
+                ],
+                "selected": [
+                    "builtins.bytes"
+                ],
+                "ignored": [
+                    "builtins.bytes"
+                ]
+            }
+        },
+        "Violation": {
+            "is_in": {
+                "return": [
+                    "builtins.int"
+                ],
+                "diff": [
+                    "typing.Mapping"
+                ]
+            },
+            "is_inline_ignored": {
+                "return": [
+                    "builtins.int"
+                ],
+                "disable_noqa": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "DecisionEngine": {
+            "_in_extended_selected": {
+                "return": [
+                    "typing.Any"
+                ],
+                "code": [
+                    "builtins.bytes"
+                ]
+            },
+            "was_selected": {
+                "return": [
+                    "typing.Any"
+                ],
+                "code": [
+                    "builtins.bytes"
+                ]
+            },
+            "__init__": {
+                "options": [
+                    "flake8.options.manager.OptionManager"
+                ]
+            },
+            "decision_for": {
+                "return": [
+                    "flake8.style_guide.Decision"
+                ],
+                "code": [
+                    "builtins.bytes"
+                ]
+            },
+            "was_ignored": {
+                "return": [
+                    "typing.Any"
+                ],
+                "code": [
+                    "builtins.bytes"
+                ]
+            },
+            "make_decision": {
+                "return": [
+                    "flake8.style_guide.Decision"
+                ],
+                "code": [
+                    "builtins.bytes"
+                ]
+            },
+            "_in_all_selected": {
+                "return": [
+                    "typing.Any"
+                ],
+                "code": [
+                    "builtins.bytes"
+                ]
+            },
+            "more_specific_decision_for": {
+                "return": [
+                    "flake8.style_guide.Decision"
+                ],
+                "code": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "StyleGuideManager": {
+            "handle_error": {
+                "return": [
+                    "typing.Any"
+                ],
+                "code": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "line_number": [
+                    "typing.Any"
+                ],
+                "column_number": [
+                    "typing.Any"
+                ],
+                "text": [
+                    "typing.Any"
+                ],
+                "physical_line": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "options": [
+                    "flake8.options.manager.OptionManager"
+                ],
+                "formatter": [
+                    "typing.Any"
+                ],
+                "decider": [
+                    "typing.Any"
+                ]
+            },
+            "add_diff_ranges": {
+                "diffinfo": [
+                    "typing.Any"
+                ]
+            },
+            "processing_file": {
+                "filename": [
+                    "typing.Any"
+                ]
+            },
+            "populate_style_guides_with": {
+                "options": [
+                    "typing.Any"
+                ]
+            },
+            "style_guide_for": {
+                "return": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "StyleGuide": {
+            "add_diff_ranges": {
+                "diffinfo": [
+                    "typing.Any"
+                ]
+            },
+            "should_report_error": {
+                "return": [
+                    "typing.Any"
+                ],
+                "code": [
+                    "typing.Any"
+                ]
+            },
+            "copy": {
+                "return": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "extend_ignore_with": [
+                    "typing.Any"
+                ]
+            },
+            "processing_file": {
+                "filename": [
+                    "typing.Any"
+                ]
+            },
+            "handle_error": {
+                "return": [
+                    "builtins.int"
+                ],
+                "code": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "line_number": [
+                    "typing.Any"
+                ],
+                "column_number": [
+                    "typing.Any"
+                ],
+                "text": [
+                    "typing.Any"
+                ],
+                "physical_line": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "options": [
+                    "flake8.options.manager.OptionManager"
+                ],
+                "formatter": [
+                    "typing.Any"
+                ],
+                "stats": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "decider": [
+                    "typing.Any"
+                ]
+            },
+            "__repr__": {
+                "return": [
+                    "builtins.str"
+                ]
+            },
+            "applies_to": {
+                "return": [
+                    "builtins.int"
+                ],
+                "filename": [
+                    "builtins.str"
+                ]
+            }
+        }
+    },
+    "flake8.main.options": {
+        "global": {
+            "register_default_options": {
+                "option_manager": [
+                    "flake8.options.manager.OptionManager"
+                ]
+            },
+            "register_preliminary_options": {
+                "parser": [
+                    "argparse._MutuallyExclusiveGroup"
+                ]
+            }
+        },
+        "JobsArgument": {
+            "__str__": {
+                "return": [
+                    "builtins.str"
+                ]
+            },
+            "__init__": {
+                "arg": [
+                    "builtins.str"
+                ]
+            }
+        }
+    },
+    "flake8.main.debug": {
+        "global": {
+            "dependencies": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "plugins_from": {
+                "return": [
+                    "builtins.list"
+                ],
+                "option_manager": [
+                    "flake8.options.manager.OptionManager"
+                ]
+            },
+            "information": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "option_manager": [
+                    "flake8.options.manager.PluginVersion"
+                ]
+            }
+        },
+        "DebugAction": {
+            "__call__": {
+                "return": [
+                    "typing.Any"
+                ],
+                "parser": [
+                    "typing.Any"
+                ],
+                "namespace": [
+                    "typing.Any"
+                ],
+                "values": [
+                    "typing.Any"
+                ],
+                "option_string": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.main.application": {
+        "Application": {
+            "report_statistics": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "find_plugins": {
+                "config_finder": [
+                    "flake8.options.config.ConfigFileFinder"
+                ]
+            },
+            "parse_preliminary_options": {
+                "return": [
+                    "builtins.tuple"
+                ],
+                "argv": [
+                    "typing.Any"
+                ]
+            },
+            "make_formatter": {
+                "formatter_class": [
+                    "typing.Any"
+                ]
+            },
+            "_run": {
+                "argv": [
+                    "typing.Any"
+                ]
+            },
+            "run": {
+                "argv": [
+                    "typing.Any"
+                ]
+            },
+            "report_benchmarks": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "program": [
+                    "builtins.str"
+                ],
+                "version": [
+                    "builtins.str"
+                ]
+            },
+            "run_checks": {
+                "files": [
+                    "typing.Any"
+                ]
+            },
+            "initialize": {
+                "argv": [
+                    "typing.Any"
+                ]
+            },
+            "parse_configuration_and_cli": {
+                "config_finder": [
+                    "typing.Any"
+                ],
+                "argv": [
+                    "typing.Any"
+                ]
+            },
+            "formatter_for": {
+                "return": [
+                    "typing.Any"
+                ],
+                "formatter_plugin_name": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.main.cli": {
+        "global": {
+            "main": {
+                "argv": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8..ipynb_checkpoints.utils-checkpoint": {
+        "global": {
+            "is_using_stdin": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "normalize_path": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "is_windows": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "_tokenize_files_to_codes_mapping": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "matches_filename": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parse_comma_separated_list": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "normalize_paths": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "stdin_get_lines": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parse_files_to_codes_mapping": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parameters_for": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "get_python_version": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "_default_predicate": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "fnmatch": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parse_unified_diff": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "filenames_from": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "stdin_get_value": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8..ipynb_checkpoints.exceptions-checkpoint": {
+        "FailedToLoadPlugin": {
+            "__str__": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "PluginRequestedUnknownParameters": {
+            "__str__": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "PluginExecutionFailed": {
+            "__str__": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8..ipynb_checkpoints.processor-checkpoint": {
+        "global": {
+            "is_multiline_string": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "is_eol_token": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "token_is_newline": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "expand_indent": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "mutate_string": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "count_parentheses": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "FileProcessor": {
+            "keyword_arguments_for": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "read_lines": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "build_logical_line_tokens": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "read_lines_from_stdin": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "file_tokens": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "_noqa_line_range": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "noqa_line_for": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "build_ast": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "should_ignore_file": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "read_lines_from_filename": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "strip_utf_bom": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "next_line": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "build_logical_line": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.plugins.manager": {
+        "global": {
+            "version_for": {
+                "return": [
+                    "typing.Any"
+                ],
+                "plugin": [
+                    "flake8.exceptions.PluginExecutionFailed"
+                ]
+            }
+        },
+        "Plugin": {
+            "provide_options": {
+                "optmanager": [
+                    "flake8.options.manager.OptionManager"
+                ],
+                "options": [
+                    "typing.Any"
+                ],
+                "extra_args": [
+                    "typing.Any"
+                ]
+            },
+            "parameter_names": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "execute": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "version": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parameters": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "to_dictionary": {
+                "return": [
+                    "builtins.dict"
+                ]
+            },
+            "plugin": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "enable": {
+                "return": [
+                    "typing.Any"
+                ],
+                "optmanager": [
+                    "flake8.options.manager.OptionManager"
+                ],
+                "options": [
+                    "typing.Any"
+                ]
+            },
+            "disable": {
+                "optmanager": [
+                    "flake8.options.manager.OptionManager"
+                ]
+            },
+            "off_by_default": {
+                "return": [
+                    "builtins.int"
+                ]
+            },
+            "register_options": {
+                "optmanager": [
+                    "flake8.options.manager.OptionManager"
+                ]
+            },
+            "group": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "plugin_name": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "name": [
+                    "typing.Any"
+                ],
+                "entry_point": [
+                    "typing.Any"
+                ],
+                "local": [
+                    "builtins.int"
+                ]
+            },
+            "is_in_a_group": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "__repr__": {
+                "return": [
+                    "builtins.str"
+                ]
+            }
+        },
+        "PluginManager": {
+            "__init__": {
+                "namespace": [
+                    "typing.Any"
+                ],
+                "local_plugins": [
+                    "typing.Any"
+                ]
+            },
+            "_load_plugin_from_entrypoint": {
+                "entry_point": [
+                    "ast.MatchStar"
+                ],
+                "local": [
+                    "builtins.int"
+                ]
+            },
+            "map": {
+                "func": [
+                    "typing.Callable"
+                ]
+            },
+            "_load_local_plugins": {
+                "local_plugins": [
+                    "typing.Iterable"
+                ]
+            }
+        },
+        "PluginTypeManager": {
+            "__init__": {
+                "local_plugins": [
+                    "typing.Any"
+                ]
+            },
+            "__contains__": {
+                "return": [
+                    "builtins.int"
+                ],
+                "name": [
+                    "typing.Any"
+                ]
+            },
+            "_generate_call_function": {
+                "return": [
+                    "typing.Any"
+                ],
+                "method_name": [
+                    "builtins.str"
+                ],
+                "optmanager": [
+                    "typing.Any"
+                ]
+            },
+            "plugins": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "register_plugin_versions": {
+                "optmanager": [
+                    "flake8.options.manager.OptionManager"
+                ]
+            },
+            "get": {
+                "return": [
+                    "typing.Any"
+                ],
+                "name": [
+                    "typing.Any"
+                ],
+                "default": [
+                    "typing.Any"
+                ]
+            },
+            "names": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "__getitem__": {
+                "return": [
+                    "typing.Any"
+                ],
+                "name": [
+                    "typing.Any"
+                ]
+            },
+            "register_options": {
+                "optmanager": [
+                    "typing.Any"
+                ]
+            },
+            "load_plugins": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "provide_options": {
+                "optmanager": [
+                    "typing.Any"
+                ],
+                "options": [
+                    "typing.Any"
+                ],
+                "extra_args": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "Checkers": {
+            "to_dictionary": {
+                "return": [
+                    "builtins.dict"
+                ]
+            },
+            "physical_line_plugins": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "logical_line_plugins": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "register_options": {
+                "optmanager": [
+                    "typing.Any"
+                ]
+            },
+            "ast_plugins": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "checks_expecting": {
+                "argument_name": [
+                    "builtins.object"
+                ]
+            }
+        }
+    },
+    "flake8.formatting.default": {
+        "SimpleFormatter": {
+            "format": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "error": [
+                    "flake8.style_guide.Violation"
+                ]
+            }
+        },
+        "FilenameOnly": {
+            "show_source": {
+                "error": [
+                    "typing.Any"
+                ]
+            },
+            "format": {
+                "return": [
+                    "typing.Any"
+                ],
+                "error": [
+                    "flake8.statistics.Statistic"
+                ]
+            }
+        },
+        "Nothing": {
+            "format": {
+                "error": [
+                    "typing.Any"
+                ]
+            },
+            "show_source": {
+                "error": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.formatting.base": {
+        "BaseFormatter": {
+            "beginning": {
+                "filename": [
+                    "typing.Any"
+                ]
+            },
+            "_write": {
+                "output": [
+                    "_typeshed.SupportsAdd"
+                ]
+            },
+            "format": {
+                "error": [
+                    "typing.Any"
+                ]
+            },
+            "finished": {
+                "filename": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "options": [
+                    "typing.Any"
+                ]
+            },
+            "write": {
+                "line": [
+                    "_typeshed.SupportsAdd"
+                ],
+                "source": [
+                    "_typeshed.SupportsAdd"
+                ]
+            },
+            "show_benchmarks": {
+                "benchmarks": [
+                    "typing.Iterable"
+                ]
+            },
+            "show_statistics": {
+                "statistics": [
+                    "flake8.statistics.Statistics"
+                ]
+            },
+            "handle": {
+                "error": [
+                    "flake8.style_guide.Violation"
+                ]
+            },
+            "show_source": {
+                "return": [
+                    "builtins.str"
+                ],
+                "error": [
+                    "flake8.style_guide.Violation"
+                ]
+            }
+        }
+    },
+    "flake8.api.legacy": {
+        "global": {
+            "get_style_guide": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "StyleGuide": {
+            "options": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "excluded": {
+                "return": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "parent": [
+                    "builtins.str"
+                ]
+            },
+            "input_file": {
+                "return": [
+                    "typing.Any"
+                ],
+                "filename": [
+                    "typing.Any"
+                ],
+                "lines": [
+                    "typing.Any"
+                ],
+                "expected": [
+                    "typing.Any"
+                ],
+                "line_offset": [
+                    "builtins.int"
+                ]
+            },
+            "init_report": {
+                "return": [
+                    "typing.Any"
+                ],
+                "reporter": [
+                    "ast._ABC"
+                ]
+            },
+            "__init__": {
+                "application": [
+                    "flake8.main.application.Application"
+                ]
+            },
+            "check_files": {
+                "return": [
+                    "typing.Any"
+                ],
+                "paths": [
+                    "typing.Any"
+                ]
+            },
+            "paths": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "Report": {
+            "__init__": {
+                "application": [
+                    "flake8.main.application.Application"
+                ]
+            },
+            "get_statistics": {
+                "return": [
+                    "builtins.list"
+                ],
+                "violation": [
+                    "typing.Any"
+                ]
+            },
+            "total_errors": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.options.manager": {
+        "global": {
+            "_flake8_normalize": {
+                "return": [
+                    "builtins.list"
+                ],
+                "value": [
+                    "builtins.str"
+                ]
+            }
+        },
+        "_CallbackAction": {
+            "__call__": {
+                "parser": [
+                    "typing.Any"
+                ],
+                "namespace": [
+                    "typing.Any"
+                ],
+                "values": [
+                    "typing.Any"
+                ],
+                "option_string": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "Option": {
+            "__init__": {
+                "short_option_name": [
+                    "builtins.bytes"
+                ],
+                "long_option_name": [
+                    "typing.Any"
+                ],
+                "action": [
+                    "builtins.str"
+                ],
+                "default": [
+                    "typing.Any"
+                ],
+                "type": [
+                    "builtins.str"
+                ],
+                "dest": [
+                    "typing.Any"
+                ],
+                "nargs": [
+                    "typing.Any"
+                ],
+                "const": [
+                    "typing.Any"
+                ],
+                "choices": [
+                    "typing.Any"
+                ],
+                "help": [
+                    "typing.Collection"
+                ],
+                "metavar": [
+                    "typing.Any"
+                ],
+                "callback": [
+                    "typing.Any"
+                ],
+                "callback_args": [
+                    "typing.Any"
+                ],
+                "callback_kwargs": [
+                    "typing.Any"
+                ],
+                "required": [
+                    "typing.Any"
+                ],
+                "parse_from_config": [
+                    "builtins.int"
+                ],
+                "comma_separated_list": [
+                    "builtins.int"
+                ],
+                "normalize_paths": [
+                    "builtins.int"
+                ]
+            },
+            "to_argparse": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "__repr__": {
+                "return": [
+                    "builtins.str"
+                ]
+            },
+            "filtered_option_kwargs": {
+                "return": [
+                    "builtins.dict"
+                ]
+            },
+            "normalize_from_setuptools": {
+                "return": [
+                    "builtins.int"
+                ],
+                "value": [
+                    "builtins.str"
+                ]
+            },
+            "normalize": {
+                "return": [
+                    "builtins.str"
+                ],
+                "value": [
+                    "builtins.str"
+                ]
+            }
+        },
+        "OptionManager": {
+            "remove_from_default_ignore": {
+                "error_codes": [
+                    "typing.Iterable"
+                ]
+            },
+            "extend_default_select": {
+                "error_codes": [
+                    "typing.Any"
+                ]
+            },
+            "register_plugin": {
+                "name": [
+                    "typing.Any"
+                ],
+                "version": [
+                    "typing.Any"
+                ],
+                "local": [
+                    "builtins.int"
+                ]
+            },
+            "group": {
+                "name": [
+                    "typing.Any"
+                ]
+            },
+            "generate_versions": {
+                "return": [
+                    "typing.Any"
+                ],
+                "format_str": [
+                    "builtins.str"
+                ],
+                "join_on": [
+                    "builtins.str"
+                ]
+            },
+            "parse_known_args": {
+                "return": [
+                    "typing.Any"
+                ],
+                "args": [
+                    "typing.Any"
+                ]
+            },
+            "parse_args": {
+                "return": [
+                    "builtins.tuple"
+                ],
+                "args": [
+                    "typing.Any"
+                ],
+                "values": [
+                    "ast._ABC"
+                ]
+            },
+            "__init__": {
+                "prog": [
+                    "typing.Any"
+                ],
+                "version": [
+                    "typing.Any"
+                ],
+                "usage": [
+                    "builtins.str"
+                ],
+                "parents": [
+                    "typing.Any"
+                ]
+            },
+            "extend_default_ignore": {
+                "error_codes": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.options.config": {
+        "global": {
+            "get_local_plugins": {
+                "return": [
+                    "flake8.options.config.LocalPlugins"
+                ],
+                "config_finder": [
+                    "flake8.options.config.ConfigFileFinder"
+                ]
+            }
+        },
+        "ConfigFileFinder": {
+            "cli_config": {
+                "return": [
+                    "typing.Any"
+                ],
+                "files": [
+                    "typing.Any"
+                ]
+            },
+            "__init__": {
+                "program_name": [
+                    "typing.Any"
+                ],
+                "extra_config_files": [
+                    "typing.Any"
+                ],
+                "config_file": [
+                    "typing.Any"
+                ],
+                "ignore_config_files": [
+                    "builtins.int"
+                ]
+            },
+            "local_config_files": {
+                "return": [
+                    "builtins.list"
+                ]
+            },
+            "local_configs_with_files": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "_read_config": {
+                "return": [
+                    "builtins.tuple"
+                ]
+            },
+            "local_configs": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "ConfigParser": {
+            "_normalize_value": {
+                "return": [
+                    "typing.Any"
+                ],
+                "option": [
+                    "flake8.options.manager.Option"
+                ],
+                "value": [
+                    "typing.Any"
+                ],
+                "parent": [
+                    "typing.Any"
+                ]
+            },
+            "is_configured_by": {
+                "return": [
+                    "typing.Any"
+                ],
+                "config": [
+                    "configparser.SafeConfigParser"
+                ]
+            },
+            "parse_local_config": {
+                "return": [
+                    "builtins.dict"
+                ]
+            },
+            "parse_cli_config": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "config_path": [
+                    "builtins.str"
+                ]
+            },
+            "__init__": {
+                "option_manager": [
+                    "flake8.options.manager.OptionManager"
+                ],
+                "config_finder": [
+                    "typing.Any"
+                ]
+            },
+            "_parse_config": {
+                "return": [
+                    "builtins.dict"
+                ],
+                "config_parser": [
+                    "configparser.SafeConfigParser"
+                ],
+                "parent": [
+                    "typing.Any"
+                ]
+            },
+            "parse": {
+                "return": [
+                    "builtins.dict"
+                ]
+            }
+        }
+    },
+    "flake8.options.aggregator": {
+        "global": {
+            "aggregate_options": {
+                "return": [
+                    "typing.Any"
+                ],
+                "manager": [
+                    "flake8.options.manager.OptionManager"
+                ],
+                "config_finder": [
+                    "typing.Any"
+                ],
+                "argv": [
+                    "typing.Any"
+                ]
+            }
+        }
+    },
+    "flake8.options..ipynb_checkpoints.manager-checkpoint": {
+        "global": {
+            "_flake8_normalize": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "Option": {
+            "__repr__": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "to_argparse": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "normalize": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "normalize_from_setuptools": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "filtered_option_kwargs": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        },
+        "OptionManager": {
+            "generate_versions": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parse_args": {
+                "return": [
+                    "typing.Any"
+                ]
+            },
+            "parse_known_args": {
+                "return": [
+                    "typing.Any"
+                ]
+            }
+        }
+    }
+}

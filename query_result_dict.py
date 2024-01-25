@@ -157,7 +157,9 @@ def raw_result_dict_from_query_dict_and_raw_result_defaultdict(
                 function_level_raw_result_dict = class_level_raw_result_dict[function_name] = dict()
 
                 for parameter_name_or_return in function_level_query_dict:
-                    function_level_raw_result_dict[parameter_name_or_return] = raw_result_defaultdict[module_name][class_name_or_global][function_name][parameter_name_or_return]
+                    import pudb
+                    pudb.set_trace()
+                    function_level_raw_result_dict[parameter_name_or_return] = raw_result_defaultdict.get(module_name, defaultdict()).get(class_name_or_global, defaultdict()).get(function_name, defaultdict()).get(parameter_name_or_return, list())
 
     return raw_result_dict
 
