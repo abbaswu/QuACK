@@ -1,11 +1,8 @@
 import _ast
-import ast
 import logging
 import typing
-from collections import defaultdict
 
-from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationTuple, NonEquivalenceRelationType
-from runtime_term import RuntimeTerm, Instance
+from relations import NonEquivalenceRelationType
 from typeshed_client_ex.client import Client
 from typeshed_client_ex.type_definitions import TypeshedClass, TypeshedClassDefinition
 

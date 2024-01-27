@@ -32,7 +32,7 @@ class NonEquivalenceRelationType(Enum):
     YieldFromAwaitResultOf = auto()
 
 
-NonEquivalenceRelationTuple = tuple[NonEquivalenceRelationType, ...]
+NonEquivalenceRelationAndParameter = tuple[NonEquivalenceRelationType, typing.Optional[object]]
 
 
 class NonEquivalenceRelationGraph:

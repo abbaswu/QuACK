@@ -1,39 +1,32 @@
 import _ast
 import ast
-import asyncio
-import itertools
 import json
 import logging
 import typing
-
 from collections import defaultdict, Counter
-from types import ModuleType, FunctionType
 
 import numpy as np
 
-import node_textual_representation_singleton
 import switches_singleton
 import typing_constraints_singleton
 from breadth_first_search_layers import breadth_first_search_layers
-from determine_number_of_type_variables import determine_number_of_type_variables
-from disjoint_set import DisjointSet
-from get_attributes_in_runtime_class import get_attributes_in_runtime_class
-from relations import NonEquivalenceRelationGraph, NonEquivalenceRelationTuple, NonEquivalenceRelationType
-from runtime_term import RuntimeTerm, Instance
-from type_ascription import type_ascription
-from type_definitions import RuntimeClass
 from class_query_database import ClassQueryDatabase
+from determine_number_of_type_variables import determine_number_of_type_variables
+from get_attributes_in_runtime_class import get_attributes_in_runtime_class
+from quack_new.get_relation_sets_of_type_parameters import get_relation_sets_of_type_parameters
+from relations import NonEquivalenceRelationType
+from runtime_term import Instance
+from type_definitions import RuntimeClass
 from typeshed_client_ex.client import Client
-
 from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, TypeshedClass, from_runtime_class, \
-    TypeshedTypeVariable, subscribe, replace_type_variables_in_type_annotation, Subscription
+    subscribe
 
 
 def dump_confidence_and_possible_class_list(
         confidence_and_possible_class_list: list[tuple[float, TypeshedClass]],
         class_inference_log_file_io: typing.IO
 ):
-    confidence_and_possible_class_string_list_list: list[list[float, str]] = [
+    confidence_and_possible_class_string_list_list: list[list[float | str]] = [
         [confidence, str(possible_class)]
         for confidence, possible_class in confidence_and_possible_class_list
     ]
@@ -46,13 +39,36 @@ def get_all_related_nodes(augmented_node_set, relation_set):
     all_related_nodes = set()
     for node in augmented_node_set:
         for relation_type, parameter in relation_set:
-            related_nodes = typing_constraints_singleton.node_non_equivalence_relation_graph.get_out_nodes_with_relation_type_and_parameter(node, relation_type, parameter)
+            related_nodes = typing_constraints_singleton.node_non_equivalence_relation_graph.get_out_nodes_with_relation_type_and_parameter(
+                node, relation_type, parameter)
             all_related_nodes.update(related_nodes)
-    
+
     return all_related_nodes
 
 
-def get_relation_sets_of_type_parameters(top_class_prediction, augmented_node_set):
+def query_relation_sets_of_type_parameters(top_class_prediction, augmented_node_set):
+    relation_type_to_parameter_to_out_nodes: defaultdict[
+        NonEquivalenceRelationType,
+        defaultdict[typing.Optional[typing.Any], set[_ast.AST]]
+    ] = defaultdict(lambda: defaultdict(set))
+
+    for node in augmented_node_set:
+        for relation_type, parameter_to_out_nodes in typing_constraints_singleton.node_non_equivalence_relation_graph.get_out_nodes(
+                node).items():
+            for parameter, out_nodes in parameter_to_out_nodes.items():
+                relation_type_to_parameter_to_out_nodes[relation_type][parameter].update(out_nodes)
+
+    number_of_type_variables = determine_number_of_type_variables(
+        top_class_prediction,
+        relation_type_to_parameter_to_out_nodes,
+        typing_constraints_singleton.client
+    )
+
+    return get_relation_sets_of_type_parameters(
+        top_class_prediction,
+        number_of_type_variables
+    )
+
 
 class TypeInference:
     def __init__(
@@ -112,9 +128,9 @@ class TypeInference:
 
             for runtime_term_sharing_node_disjoint_set_top_node in runtime_term_sharing_node_disjoint_set_top_node_set:
                 runtime_term_set = \
-                typing_constraints_singleton.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
-                    runtime_term_sharing_node_disjoint_set_top_node
-                ]
+                    typing_constraints_singleton.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                        runtime_term_sharing_node_disjoint_set_top_node
+                    ]
                 for runtime_term in runtime_term_set:
                     if isinstance(runtime_term, Instance):
                         instance_class = runtime_term.class_
@@ -143,8 +159,8 @@ class TypeInference:
                     switches_singleton.shortcut_single_class_covering_all_attributes
                     and len(not_none_instance_classes) == 1
                     and set(aggregate_attribute_counter.keys()).issubset(
-                        get_attributes_in_runtime_class(next(iter(not_none_instance_classes)))
-                    )
+                get_attributes_in_runtime_class(next(iter(not_none_instance_classes)))
+            )
             ):
 
                 single_instance_class_covering_all_attributes = next(iter(not_none_instance_classes))
@@ -225,18 +241,14 @@ class TypeInference:
                 return_value = non_first_level_class_inference_failed_fallback
             else:
                 # Part 0: Augment node set.
-                
-                augmented_node_set = {
-                        node
-                        for breadth_first_search_layer in breadth_first_search_layers(
-                            typing_constraints_singleton.node_containment_graph,
-                            node_set
-                        )
-                        for node in breadth_first_search_layer
-                }
-                
+                augmented_node_set = set()
+                for breadth_first_search_layer in breadth_first_search_layers(
+                        typing_constraints_singleton.node_containment_graph,
+                        node_set
+                ):
+                    augmented_node_set.update(breadth_first_search_layer)
+
                 # Part 1: Infer possible classes.
-                
                 logging.info(
                     '%sPerforming class inference for %s.',
                     indent,
@@ -247,7 +259,7 @@ class TypeInference:
                     confidence_and_possible_class_list,
                     can_be_none
                 ) = self.infer_classes_for_nodes(
-                    augmented_node_set,
+                    frozenset(augmented_node_set),
                     depth + 1,
                     cosine_similarity_threshold
                 )
@@ -259,7 +271,7 @@ class TypeInference:
                     )
 
                 # Part 2: Extract top class prediction.
-                
+
                 if not confidence_and_possible_class_list:
                     top_class_prediction = (
                         first_level_class_inference_failed_fallback
@@ -289,21 +301,21 @@ class TypeInference:
 
                 type_parameter_type_prediction_list = []
 
-                for relation_set in get_relation_sets_of_type_parameters(top_class_prediction, augmented_node_set):
+                for relation_set in query_relation_sets_of_type_parameters(top_class_prediction, augmented_node_set):
                     related_nodes = get_all_related_nodes(augmented_node_set, relation_set)
                     type_parameter_type_prediction = self.infer_type(
-                            related_nodes,
-                            depth + 1,
-                            cosine_similarity_threshold,
-                            depth_limit,
-                            first_level_class_inference_failed_fallback,
-                            non_first_level_class_inference_failed_fallback,
-                            class_inference_log_file_io
+                        frozenset(related_nodes),
+                        depth + 1,
+                        cosine_similarity_threshold,
+                        depth_limit,
+                        first_level_class_inference_failed_fallback,
+                        non_first_level_class_inference_failed_fallback,
+                        class_inference_log_file_io
                     )
                     type_parameter_type_prediction_list.append(type_parameter_type_prediction)
 
                 # Part 4: Get final type prediction.
-                if type_parameter_type_prediction_list:
+                if type_parameter_type_prediction_list and switches_singleton.predict_type_parameters:
                     final_type_prediction = subscribe(top_class_prediction, tuple(type_parameter_type_prediction_list))
                 else:
                     final_type_prediction = top_class_prediction

@@ -51,12 +51,12 @@ def main():
     parser.add_argument('-i', '--interactive', action='store_true', required=False, default=False,
                         help='Interactive mode')
     parser.add_argument('--class-inference-log-file', type=str, required=False, default=os.devnull)
-    parser.add_argument('--no-induced-equivalent-relation-resolution', action='store_true', required=False)
     parser.add_argument('--no-attribute-access-propagation', action='store_true', required=False)
     parser.add_argument('--no-stdlib-function-call-propagation', action='store_true', required=False)
     parser.add_argument('--no-user-defined-function-call-propagation', action='store_true', required=False)
     parser.add_argument('--no-shortcut-single-class-covering-all-attributes', action='store_true', required=False)
     parser.add_argument('--no-parameter-default-value-handling', action='store_true', required=False)
+    parser.add_argument('--no-type-parameters', action='store_true', required=False)
     parser.add_argument('--log-term-frequency', action='store_true', required=False, default=False)
     parser.add_argument('--parameters-only', action='store_true', required=False, default=False)
     parser.add_argument('--return-values-only', action='store_true', required=False, default=False)
@@ -70,8 +70,6 @@ def main():
     is_interactive: bool = args.interactive
 
     # Set switches
-    if args.no_induced_equivalent_relation_resolution:
-        switches_singleton.valid_relations_to_induce_equivalent_relations = frozenset()
 
     if args.no_attribute_access_propagation:
         switches_singleton.propagate_attribute_accesses = False
@@ -88,8 +86,8 @@ def main():
     if args.no_parameter_default_value_handling:
         switches_singleton.handle_parameter_default_values = False
 
-    if args.log_term_frequency:
-        switches_singleton.log_term_frequency = True
+    if args.no_type_parameters:
+        switches_singleton.predict_type_parameters = False
 
     if args.parameters_only:
         switches_singleton.parameters_only = True

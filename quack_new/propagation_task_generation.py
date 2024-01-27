@@ -2,7 +2,7 @@ import logging
 import typing
 
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
-from relations import NonEquivalenceRelationType, NonEquivalenceRelationTuple
+from relations import NonEquivalenceRelationType, NonEquivalenceRelationAndParameter
 from runtime_term import Instance, UnboundMethod, BoundMethod, RuntimeTerm
 from type_definitions import Module, RuntimeClass, Function
 
