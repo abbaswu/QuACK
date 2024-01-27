@@ -2,7 +2,7 @@ import ast
 import logging
 import typing
 
-from quack_new.get_relation_sets_of_type_parameters import get_relation_sets_of_type_parameters
+from get_relation_sets_of_type_parameters import get_relation_sets_of_type_parameters
 from relations import NonEquivalenceRelationType
 from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, TypeshedTypeVariable, TypeshedClass, \
     Subscription, Union

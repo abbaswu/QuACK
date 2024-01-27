@@ -13,7 +13,7 @@ from breadth_first_search_layers import breadth_first_search_layers
 from class_query_database import ClassQueryDatabase
 from determine_number_of_type_variables import determine_number_of_type_variables
 from get_attributes_in_runtime_class import get_attributes_in_runtime_class
-from quack_new.get_relation_sets_of_type_parameters import get_relation_sets_of_type_parameters
+from get_relation_sets_of_type_parameters import get_relation_sets_of_type_parameters
 from relations import NonEquivalenceRelationType
 from runtime_term import Instance
 from type_definitions import RuntimeClass
@@ -320,7 +320,7 @@ class TypeInference:
                 else:
                     final_type_prediction = top_class_prediction
 
-                return_value = top_class_prediction
+                return_value = final_type_prediction
 
             self.type_inference_cache[node_set] = return_value
 
