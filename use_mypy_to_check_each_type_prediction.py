@@ -14,7 +14,6 @@ from module_name_from_module_search_path_and_python_file_path import module_name
 from type_inference_result import iterate_type_inference_classes
 
 
-RUN_COMMAND_IN_ENVIRONMENT_PREFIX = ['conda', 'run', '--no-capture-output', '--name', 'mypy']
 MYPY_OUTPUT_LINE_PATTERN: re.Pattern = re.compile(r'([^:]+):(\d+): error: (.+) \[([^\]]+)\]$')
 
 
@@ -61,7 +60,8 @@ def parse_mypy_output_lines(
 
 def run_mypy_and_parse_output(
     module_search_path: str,
-    module_names: typing.Iterable[str]
+    module_names: typing.Iterable[str],
+    run_command_in_environment_prefix: list[str],
 ) -> pd.DataFrame:
     with ManagedWorkingDirectory(module_search_path):
         mypy_module_option_string = []
@@ -70,7 +70,7 @@ def run_mypy_and_parse_output(
             mypy_module_option_string.append(module_name)
         
         result = subprocess.run(
-            RUN_COMMAND_IN_ENVIRONMENT_PREFIX + [
+            run_command_in_environment_prefix + [
                 'mypy',
                 '--check-untyped-defs',
                 '--no-warn-no-return',
@@ -213,7 +213,8 @@ def use_mypy_to_check_each_type_prediction(
     module_search_path,
     module_name_to_module_node_without_type_annotation_dict,
     module_name_to_module_path_dict,
-    result_dict
+    result_dict,
+    run_command_in_environment_prefix: list[str]
 ):
     """Returns a pd.DataFrame with the following rows:
     line_number
@@ -302,7 +303,7 @@ def use_mypy_to_check_each_type_prediction(
     requirements_txt_path = os.path.join(module_search_path, 'requirements.txt')
     if os.path.isfile(requirements_txt_path):
         result = subprocess.run(
-            RUN_COMMAND_IN_ENVIRONMENT_PREFIX + [
+            run_command_in_environment_prefix + [
                 'pip',
                 'install',
                 '-r',
@@ -317,7 +318,8 @@ def use_mypy_to_check_each_type_prediction(
     # Run Mypy
     mypy_output_dataframe = run_mypy_and_parse_output(
         module_search_path,
-        module_name_to_module_node_without_type_annotation_dict.keys()
+        module_name_to_module_node_without_type_annotation_dict.keys(),
+        run_command_in_environment_prefix
     )
 
     # Add each type annotation to the revelant module
@@ -353,7 +355,8 @@ def use_mypy_to_check_each_type_prediction(
                         # Run mypy
                         mypy_output_dataframe_ = run_mypy_and_parse_output(
                             module_search_path,
-                            module_name_to_module_node_without_type_annotation_dict.keys()
+                            module_name_to_module_node_without_type_annotation_dict.keys(),
+                            run_command_in_environment_prefix
                         )
 
                         # Calculate diff
