@@ -26,7 +26,11 @@ RUN conda create --name pytype -y python=3.10 \
     && conda run --name pytype pip install pytype
 
 COPY hityper /root/hityper
+COPY PyCG-0.0.7 /root/PyCG-0.0.7
 RUN conda create --name hityper -y python=3.9 \
+    && pushd /root/PyCG-0.0.7 \
+    && conda run --name hityper python setup.py install \
+    && popd
     && conda run --name hityper pip install --verbose /root/hityper \
     && conda run --name hityper pip install --verbose torch --index-url https://download.pytorch.org/whl/cpu
 
