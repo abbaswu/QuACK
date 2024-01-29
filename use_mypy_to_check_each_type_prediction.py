@@ -86,10 +86,6 @@ def run_mypy_and_parse_output(
 
         print(stderr)
 
-        if 'errors prevented further checking' in stderr:
-            import pudb
-            pudb.set_trace()
-
         # Parse mypy's output lines
         mypy_output_dataframe: pd.DataFrame = parse_mypy_output_lines(
             result.stdout.decode().splitlines(),
@@ -116,9 +112,6 @@ def add_type_annotation(
         ]
 
         if not class_nodes:
-            import pudb
-            pudb.set_trace()
-
             return
 
         class_node = class_nodes[0]
@@ -131,9 +124,6 @@ def add_type_annotation(
     ]
 
     if not function_nodes:
-        import pudb
-        pudb.set_trace()
-
         return
 
     # Retrieve the last definition
@@ -150,9 +140,6 @@ def add_type_annotation(
         }
 
         if parameter_name_or_return not in parameter_names_to_args:
-            import pudb
-            pudb.set_trace()
-
             return
 
         arg = parameter_names_to_args[parameter_name_or_return]
@@ -262,8 +249,6 @@ def use_mypy_to_check_each_type_prediction(
                             type_inference_class_module_name: str | None = type_inference_class.module_name
                             if type_inference_class_module_name:
                                 module_name_to_import_set.add(type_inference_class_module_name)
-                            else:
-                                import pudb; pudb.set_trace()
         
         if module_name_to_import_set:
             statements_to_add = []
@@ -364,8 +349,6 @@ def use_mypy_to_check_each_type_prediction(
                             mypy_output_dataframe,
                             mypy_output_dataframe_
                         )
-
-                        import pudb; pudb.set_trace()
 
                         # Initialize a new column with a single string value
                         diff['type_annotation'] = str(top_type_annotation)
