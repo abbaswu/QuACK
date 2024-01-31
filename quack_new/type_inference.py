@@ -127,14 +127,13 @@ class TypeInference:
             }
 
             for runtime_term_sharing_node_disjoint_set_top_node in runtime_term_sharing_node_disjoint_set_top_node_set:
-                runtime_term_set = \
-                    typing_constraints_singleton.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
-                        runtime_term_sharing_node_disjoint_set_top_node
-                    ]
+                runtime_term_set = typing_constraints_singleton.runtime_term_sharing_equivalent_set_top_nodes_to_runtime_term_sets[
+                    runtime_term_sharing_node_disjoint_set_top_node
+                ]
                 for runtime_term in runtime_term_set:
                     if isinstance(runtime_term, Instance):
                         instance_class = runtime_term.class_
-                        if isinstance(instance_class, type(None)):
+                        if instance_class is type(None):
                             can_be_none = True
                         else:
                             not_none_instance_classes.add(instance_class)

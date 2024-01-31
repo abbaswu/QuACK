@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import typing
+from itertools import chain
 from types import ModuleType
 
 import definitions_to_runtime_terms_mappings_singleton
@@ -24,11 +25,61 @@ from trie import search
 from type_inference import TypeInference
 
 
-def contains_return_statement(function_node: typing.Union[ast.FunctionDef, ast.AsyncFunctionDef]) -> bool:
-    return any(
-        isinstance(node, ast.Return)
-        for node in ast.walk(function_node)
-    )
+# search ast_node_namespace_trie
+
+def search_ast_node_namespace_trie(
+    ast_node_namespace_trie_root,
+    components: typing.Sequence[str]
+) -> set[ast.AST]:
+    if components:
+        containing_namespace_components, name = components[:-1], components[-1]
+
+        containing_namespace_trie_root = search(
+            ast_node_namespace_trie_root,
+            containing_namespace_components
+        )
+
+        if containing_namespace_trie_root is not None:
+            if containing_namespace_trie_root.value is not None:
+                if name in containing_namespace_trie_root.value:
+                    return containing_namespace_trie_root.value[name]
+
+    return set()
+
+# get typing slots
+
+def get_typing_slots_in_query_dict(query_dict):
+    return list(chain.from_iterable(
+        map(
+            lambda module_name: get_typing_slots_in_module_level_query_dict(module_name, query_dict[module_name]),
+            query_dict.keys(),
+        )
+    ))
+
+
+def get_typing_slots_in_module_level_query_dict(module_name, module_level_query_dict):
+    return list(chain.from_iterable(
+        map(
+            lambda class_name: get_typing_slots_in_class_level_query_dict(module_name, class_name, module_level_query_dict[class_name]),
+            module_level_query_dict.keys(),
+        )
+    ))
+
+
+def get_typing_slots_in_class_level_query_dict(module_name, class_name, class_level_query_dict):
+    return list(chain.from_iterable(
+        map(
+            lambda function_name: get_typing_slots_in_functional_level_query_dict(module_name, class_name, function_name, class_level_query_dict[function_name]),
+            class_level_query_dict.keys(),
+        )
+    ))
+
+
+def get_typing_slots_in_functional_level_query_dict(module_name, class_name, function_name, functional_level_query_dict):
+    return list(map(
+        lambda parameter_name: [module_name, class_name, function_name, parameter_name],
+        functional_level_query_dict,
+    ))
 
 
 def main():
@@ -50,6 +101,7 @@ def main():
                         help='Output JSON file')
     parser.add_argument('-i', '--interactive', action='store_true', required=False, default=False,
                         help='Interactive mode')
+    parser.add_argument('-q', '--query-dict', type=str, required=False, default=None, help='Query dict JSON file path')
     parser.add_argument('--class-inference-log-file', type=str, required=False, default=os.devnull)
     parser.add_argument('--no-attribute-access-propagation', action='store_true', required=False)
     parser.add_argument('--no-stdlib-function-call-propagation', action='store_true', required=False)
@@ -68,6 +120,11 @@ def main():
     module_prefix: str = args.module_prefix
     output_file: str = args.output_file
     is_interactive: bool = args.interactive
+    if not is_interactive:
+        with open(args.query_dict, 'r') as fp:
+            query_dict = json.load(fp)
+    else:
+        query_dict = {}
 
     # Set switches
 
@@ -186,30 +243,11 @@ def main():
     with open(args.class_inference_log_file, 'w') as class_inference_log_file_io:
         if is_interactive:
             while True:
-                user_input = input(
-                    'Enter the full containing namespace and name of the node (e.g. module_name class_name function_name name):')
+                user_input = input('Enter the full containing namespace and name of the node (e.g. module_name class_name function_name name):')
+
                 components = user_input.split()
 
-                if not components:
-                    continue
-
-                containing_namespace_components, name = components[:-1], components[-1]
-
-                containing_namespace_trie_root = search(
-                    ast_node_namespace_trie_root,
-                    containing_namespace_components
-                )
-
-                if containing_namespace_trie_root is None:
-                    continue
-
-                if containing_namespace_trie_root.value is None:
-                    continue
-
-                if name not in containing_namespace_trie_root.value:
-                    continue
-
-                node_set = containing_namespace_trie_root.value[name]
+                node_set = search_ast_node_namespace_trie(ast_node_namespace_trie_root, components)
 
                 type_inference_result = type_inference.infer_type(
                     frozenset(node_set),
@@ -221,83 +259,35 @@ def main():
         else:
             raw_result_defaultdict: RawResultDefaultdict = get_raw_result_defaultdict()
 
-            for module_name, module_node in module_name_to_module_node_dict.items():
-                class_names_to_function_node_sets: dict[
-                    str,
-                    set[typing.Union[ast.FunctionDef, ast.AsyncFunctionDef]]
-                ] = {
-                    'global': set()
-                }
+            for (
+                module_name_,
+                class_name_or_global_,
+                function_name_,
+                parameter_name_or_return_
+            ) in get_typing_slots_in_query_dict(query_dict):
+                if class_name_or_global_ == 'global':
+                    components = [module_name_, function_name_, parameter_name_or_return_]
+                else:
+                    components = [module_name_, class_name_or_global_, function_name_, parameter_name_or_return_]
+                
+                node_set = search_ast_node_namespace_trie(ast_node_namespace_trie_root, components)
 
-                for node in module_node.body:
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        class_names_to_function_node_sets['global'].add(node)
-                    elif isinstance(node, ast.ClassDef):
-                        class_name = node.name
-                        function_node_set: set[typing.Union[ast.FunctionDef, ast.AsyncFunctionDef]] = set()
+                type_inference_result_list = raw_result_defaultdict[module_name][class_name][function_name][parameter_name]
 
-                        for child_node in node.body:
-                            if isinstance(child_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                                function_node_set.add(child_node)
+                # Do not infer parameter types for self and cls in methods of classes.
+                # Do not infer return types for __init__ and __new__ of classes.
+                if (
+                    (class_name_or_global_ != 'global' and parameter_name_or_return_ in ('self', 'cls'))
+                    or (class_name_or_global_ != 'global' and function_name_ in ('__init__', '__new__') and parameter_name_or_return_ == 'return')
+                ):
+                    continue
+                
+                type_inference_result = type_inference.infer_type(
+                    frozenset(node_set),
+                    class_inference_log_file_io=class_inference_log_file_io
+                )
 
-                        class_names_to_function_node_sets[class_name] = function_node_set
-
-                for class_name, function_node_set in class_names_to_function_node_sets.items():
-                    for function_node in function_node_set:
-                        function_name = function_node.name
-
-                        (
-                            parameter_list,
-                            parameter_name_to_parameter_mapping,
-                            symbolic_return_value,
-                        ) = parameter_lists_and_symbolic_return_values_singleton.nodes_to_parameter_lists_parameter_name_to_parameter_mappings_and_symbolic_return_values[
-                            function_node
-                        ]
-
-                        parameter_names_to_parameter_nodes: dict[str, _ast.AST] = {}
-
-                        # Only infer return value types for functions that are:
-                        # Not __init__ and __new__ of classes, and,
-                        # Contain return statements.
-                        if (
-                                not (class_name != 'global' and function_name in ('__init__', '__new__'))
-                                and contains_return_statement(function_node)
-                                and not switches_singleton.parameters_only
-                        ):
-                            parameter_names_to_parameter_nodes['return'] = symbolic_return_value
-
-                        if not switches_singleton.return_values_only:
-                            # Do not infer parameter types for self and cls in methods of classes.
-                            for i, parameter in enumerate(parameter_list):
-                                if not (class_name != 'global' and i == 0 and parameter.arg in ('self', 'cls')):
-                                    parameter_names_to_parameter_nodes[parameter.arg] = parameter
-
-                            # Add parameters that are not in the parameter list.
-                            existing_parameter_names = {
-                                parameter.arg
-                                for parameter in parameter_list
-                            }
-
-                            for parameter_name, parameter in parameter_name_to_parameter_mapping.items():
-                                if parameter_name not in existing_parameter_names:
-                                    parameter_names_to_parameter_nodes[parameter_name] = parameter
-
-                        for parameter_name, parameter_node in parameter_names_to_parameter_nodes.items():
-                            logging.info(
-                                'Inferring types for %s::%s::%s::%s',
-                                module_name,
-                                class_name,
-                                function_name,
-                                parameter_name
-                            )
-                            type_inference_result = type_inference.infer_type(
-                                frozenset([parameter_node]),
-                                class_inference_log_file_io=class_inference_log_file_io
-                            )
-
-                            raw_result_defaultdict[module_name][class_name][function_name][parameter_name].append(
-                                str(type_inference_result)
-                            )
+                type_inference_result_list.append(str(type_inference_result))
 
             with open(output_file, 'w') as output_file_io:
                 json.dump(raw_result_defaultdict, output_file_io, indent=4)

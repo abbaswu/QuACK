@@ -103,20 +103,6 @@ class ModuleLevelASTNodeNamespaceTrieBuilder:
 
             self.namespace_defining_trie_node_stack.pop()
         else:
-            if isinstance(node, ast.ExceptHandler):
-                if node.name is not None:
-                    add_node_that_accesses_name(
-                        current_namespace_defining_trie_node,
-                        node,
-                        node.name,
-                    )
-            elif isinstance(node, ast.Name):
-                add_node_that_accesses_name(
-                    current_namespace_defining_trie_node,
-                    node,
-                    node.id,
-                )
-
             for child_node in get_child_nodes(node):
                 self.visit(child_node)
 
