@@ -272,7 +272,7 @@ def main():
                 
                 node_set = search_ast_node_namespace_trie(ast_node_namespace_trie_root, components)
 
-                type_inference_result_list = raw_result_defaultdict[module_name][class_name][function_name][parameter_name]
+                type_inference_result_list = raw_result_defaultdict[module_name_][class_name_or_global_][function_name_][parameter_name_or_return_]
 
                 # Do not infer parameter types for self and cls in methods of classes.
                 # Do not infer return types for __init__ and __new__ of classes.

@@ -126,188 +126,6 @@ case "$method" in
     #     # Import-based analysis, MUST use pytype's virtual environment that has all the requirements installed
     #     conda run --no-capture-output --name pytype python3 "$(pwd)/parse_pytype_result_directory.py" --query-dict "$query_dict" --module-search-path "$module_search_path" --pytype-pyi-directory "$pytype_pyi_directory" > "$output_file_path"
     #     ;;
-    quack)
-        # Strip type annotations from Python files
-	python3 "$STRIP_TYPE_ANNOTATIONS" --directory "$module_search_path"
-
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--no-induced-equivalent-relation-resolution)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --no-induced-equivalent-relation-resolution \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--no-attribute-access-propagation)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --no-attribute-access-propagation \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--no-stdlib-function-call-propagation)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --no-stdlib-function-call-propagation \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--no-user-defined-function-call-propagation)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --no-user-defined-function-call-propagation \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--no-shortcut-single-class-covering-all-attributes)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --no-shortcut-single-class-covering-all-attributes \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--no-parameter-default-value-handling)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --no-parameter-default-value-handling \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--log-term-frequency)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --log-term-frequency \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack--simplified-type-ascription)
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_MAIN" \
-        --simplified-type-ascription \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
     quack_new)
         # Strip type annotations from Python files
         python3 "$STRIP_TYPE_ANNOTATIONS" --directory "$module_search_path"
@@ -325,52 +143,7 @@ case "$method" in
         -o "$time_output_file_path" \
         conda run --no-capture-output --name quack \
         python3 "$QUACK_NEW_MAIN" \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack_new--parameters-only)
-        # Strip type annotations from Python files
-        python3 "$STRIP_TYPE_ANNOTATIONS" --directory "$module_search_path"
-
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_NEW_MAIN" \
-        --parameters-only \
-        --module-search-path "$module_search_path" \
-        --module-prefix "$module_prefix" \
-        --output-file "$output_file_path" \
-        --class-inference-log-file="$class_inference_log_file"
-        ;;
-    quack_new--return-values-only)
-        # Strip type annotations from Python files
-	python3 "$STRIP_TYPE_ANNOTATIONS" --directory "$module_search_path"
-
-        if [ -f "${module_search_path}/requirements.txt" ]; then
-            conda run --no-capture-output --name quack pip install -r "${module_search_path}/requirements.txt" 1>&2
-        fi
-
-        mkdir -p "$raw_output_directory"
-        class_inference_log_file="$raw_output_directory/class_inference_log_file.jsonl"
-
-        PYTHONPATH="$module_search_path" \
-        /usr/bin/time \
-        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-        -o "$time_output_file_path" \
-        conda run --no-capture-output --name quack \
-        python3 "$QUACK_NEW_MAIN" \
-        --return-values-only \
+        --query-dict "$query_dict" \
         --module-search-path "$module_search_path" \
         --module-prefix "$module_prefix" \
         --output-file "$output_file_path" \
@@ -385,13 +158,13 @@ case "$method" in
         fi
 
         /usr/bin/time \
-	-f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
+        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
        	-o "$time_output_file_path" \
-	/bin/bash run_stray.sh \
-	-q "$query_dict" \
-	-s "$module_search_path" \
-	-o "$output_file_path" \
-	-r "$raw_output_directory"
+        /bin/bash run_stray.sh \
+        -q "$query_dict" \
+        -s "$module_search_path" \
+        -o "$output_file_path" \
+        -r "$raw_output_directory"
         ;;
     hityper)
         # Strip type annotations from Python files
@@ -402,28 +175,28 @@ case "$method" in
         fi
 
         /usr/bin/time \
-	-f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-	-o "$time_output_file_path" \
-	/bin/bash run_hityper.sh \
-	-q "$query_dict" \
-	-s "$module_search_path" \
-	-o "$output_file_path" \
-	-r "$raw_output_directory"
+        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
+        -o "$time_output_file_path" \
+        /bin/bash run_hityper.sh \
+        -q "$query_dict" \
+        -s "$module_search_path" \
+        -o "$output_file_path" \
+        -r "$raw_output_directory"
         ;;
     extract_type_annotations)
         if [ -f "${module_search_path}/requirements.txt" ]; then
             conda run --no-capture-output --name extract_type_annotations pip install -r "${module_search_path}/requirements.txt" 1>&2
         fi
 
-	PYTHONPATH="$module_search_path" \
+        PYTHONPATH="$module_search_path" \
         /usr/bin/time \
-	-f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
-	-o "$time_output_file_path" \
-	conda run --no-capture-output --name extract_type_annotations \
-	python3 "$EXTRACT_TYPE_ANNOTATIONS_MAIN" \
-	--module-search-path "$module_search_path" \
-	--module-prefix "$module_prefix" \
-	--output-file "$output_file_path"
+        -f '{"maximum resident set size in KB": %M, "elapsed real time (wall clock) in seconds": %e}' \
+        -o "$time_output_file_path" \
+        conda run --no-capture-output --name extract_type_annotations \
+        python3 "$EXTRACT_TYPE_ANNOTATIONS_MAIN" \
+        --module-search-path "$module_search_path" \
+        --module-prefix "$module_prefix" \
+        --output-file "$output_file_path"
 
         # Strip type annotations from Python files
         python3 "$STRIP_TYPE_ANNOTATIONS" --directory "$module_search_path"

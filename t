@@ -1,3 +1,4 @@
+from query_result_dict import QueryDict, ResultDict, generate_query_dict, raw_result_dict_from_result_dict
 from read_result_dict_from_output_json_file import *
 from static_import_analysis import *
 from strip_type_annotations import *
@@ -87,23 +88,52 @@ def run_quack(
         if result.returncode != 0:
             raise Exception(f"Script returned non-zero exit code {result.returncode}.")
 
-    # Run QuACK
-    run_quack_result = subprocess.run(
-        run_command_in_environment_prefix + [
-            'python',
-            os.path.join('quack_new', 'main.py'),
-            '--module-search-path',
-            module_search_path,
-            '--module-prefix',
-            module_prefix,
-            '--output-file',
-            output_file
-        ]
+    # Do static import analysis
+    (
+        module_name_to_file_path_dict,
+        module_name_to_function_name_to_parameter_name_list_dict,
+        module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
+        module_name_to_import_tuple_set_dict,
+        module_name_to_import_from_tuple_set_dict
+    ) = do_static_import_analysis(module_search_path, module_prefix)
+    
+    module_list: list[str] = list(module_name_to_file_path_dict.keys())
+    
+    # Generate query dict
+    query_dict: QueryDict = generate_query_dict(
+        module_name_to_file_path_dict,
+        module_name_to_function_name_to_parameter_name_list_dict,
+        module_name_to_class_name_to_method_name_to_parameter_name_list_dict
     )
 
-    # If the script returned a non-zero exit code, raise an exception
-    if run_quack_result.returncode != 0:
-        raise Exception(f"Script returned non-zero exit code {run_quack_result.returncode}.")
+    # Create a temporary file
+    with tempfile.TemporaryDirectory() as temporary_directory_name:
+        it = tempfile._get_candidate_names()
+
+        query_dict_temporary_file_name = next(it)
+        query_dict_temporary_file_path = os.path.join(temporary_directory_name, query_dict_temporary_file_name)
+        with open(query_dict_temporary_file_path, 'w') as fp:
+            json.dump(query_dict, fp, indent=4)
+
+        # Run QuACK
+        run_quack_result = subprocess.run(
+            run_command_in_environment_prefix + [
+                'python',
+                os.path.join('quack_new', 'main.py'),
+                '--query-dict',
+                query_dict_temporary_file_path,
+                '--module-search-path',
+                module_search_path,
+                '--module-prefix',
+                module_prefix,
+                '--output-file',
+                output_file
+            ]
+        )
+
+        # If the script returned a non-zero exit code, raise an exception
+        if run_quack_result.returncode != 0:
+            raise Exception(f"Script returned non-zero exit code {run_quack_result.returncode}.")
 
 
 def copy_content_of_directory_to_directory(
