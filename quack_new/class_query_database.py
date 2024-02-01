@@ -1,15 +1,19 @@
 import builtins
 import collections.abc
+import contextlib
+import io
 import logging
 import math
 import numbers
-import typing
 import types
+import typing
+import typing_extensions
 
 from collections import Counter
 from math import log
 from types import ModuleType
 
+import pandas as pd
 from numpy import ndarray, zeros, fromiter
 from scipy.spatial.distance import cosine
 
@@ -40,6 +44,8 @@ class ClassQueryDatabase:
         self.attribute_to_index_dict: dict[str, int] = dict()
         self.attribute_to_idf_dict: dict[str, float] = dict()
         self.number_of_attributes: int = 0
+
+        self.class_attribute_matrix: pd.DataFrame
 
         self.candidate_class_to_idf_ndarray_dict: dict[TypeshedClass, ndarray] = dict()
 
@@ -93,18 +99,19 @@ class ClassQueryDatabase:
                 range,
                 slice,
                 type,
-                BaseException,
-                OSError,
-                SyntaxError,
-                NameError,
-                ImportError,
-                AttributeError,
-                SystemExit,
-                StopIteration,
-                numbers.Complex,
-                numbers.Real,
-                numbers.Rational,
-                numbers.Integral,
+                types.CellType,
+                types.TracebackType,
+                types.FrameType,
+                types.CodeType,
+                typing.SupportsIndex,
+                typing.SupportsBytes,
+                typing.SupportsComplex,
+                typing.SupportsFloat,
+                typing.SupportsInt,
+                typing.SupportsRound,
+                typing.SupportsAbs,
+                typing.TextIO,
+                typing.IO,
                 collections.abc.Iterable,
                 collections.abc.Collection,
                 collections.abc.Iterator,
@@ -122,19 +129,12 @@ class ClassQueryDatabase:
                 collections.abc.Set,
                 collections.abc.MutableSet,
                 collections.abc.Callable,
-                typing.SupportsIndex,
-                typing.SupportsBytes,
-                typing.SupportsComplex,
-                typing.SupportsFloat,
-                typing.SupportsInt,
-                typing.SupportsRound,
-                typing.SupportsAbs,
-                typing.TextIO,
-                typing.IO,
-                types.CellType,
-                types.TracebackType,
-                types.FrameType,
-                types.CodeType,
+                numbers.Complex,
+                numbers.Real,
+                numbers.Rational,
+                numbers.Integral,
+                contextlib.AbstractContextManager,
+                contextlib.AbstractAsyncContextManager
         ):
             attributes_in_runtime_class = get_attributes_in_runtime_class(runtime_class)
             add(attribute_set_trie_root, attributes_in_runtime_class)
@@ -145,7 +145,7 @@ class ClassQueryDatabase:
 
         runtime_class_set_from_modules: set[type] = set()
 
-        for module in module_set:
+        for module in module_set - {builtins, types, typing, typing_extensions, io, collections.abc, numbers, contextlib}: # Exclude some modules
             for runtime_class in get_types_in_module(module):
                 runtime_class_set_from_modules.update(runtime_class.__mro__)
 
@@ -171,6 +171,9 @@ class ClassQueryDatabase:
                 typeshed_class = from_runtime_class(runtime_class)
                 typeshed_class_to_attribute_set_dict[typeshed_class] = attributes_in_runtime_class
 
+        # Finish adding all classes
+        # Initialize class query
+
         for typeshed_class, attribute_set in typeshed_class_to_attribute_set_dict.items():
             self.candidate_class_list.append(typeshed_class)
             self.candidate_class_to_attribute_set_dict[typeshed_class] = attribute_set
@@ -194,6 +197,18 @@ class ClassQueryDatabase:
             self.attribute_to_idf_dict[attribute] = log((self.number_of_types) / (1 + attribute_frequency))
 
         self.number_of_attributes += len(self.attribute_list)
+
+        self.class_attribute_matrix = pd.DataFrame(
+            [
+                [
+                    (attribute in self.candidate_class_to_attribute_set_dict.get(candidate_class, set()))
+                    for attribute in self.attribute_list
+                ]
+                for candidate_class in self.candidate_class_list
+            ],
+            index=list(map(str, self.candidate_class_list)),
+            columns=self.attribute_list
+        )
 
         for typeshed_class, attribute_set in self.candidate_class_to_attribute_set_dict.items():
             idf_ndarray, _ = self.get_idf_ndarray(attribute_set)

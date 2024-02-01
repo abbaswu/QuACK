@@ -92,17 +92,13 @@ def main():
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--module-search-path', type=str, required=True,
-                        help='Module search path, e.g. /tmp/module_search_path')
-    parser.add_argument('-p', '--module-prefix', type=str, required=True,
-                        help="Module prefix")
-    parser.add_argument('-o', '--output-file', type=str, required=False,
-                        default='output.json',
-                        help='Output JSON file')
-    parser.add_argument('-i', '--interactive', action='store_true', required=False, default=False,
-                        help='Interactive mode')
+    parser.add_argument('-s', '--module-search-path', type=str, required=True, help='Module search path, e.g. /tmp/module_search_path')
+    parser.add_argument('-p', '--module-prefix', type=str, required=True, help="Module prefix")
+    parser.add_argument('-o', '--output-file', type=str, required=False, default='output.json', help='Output JSON file')
+    parser.add_argument('-i', '--interactive', action='store_true', required=False, default=False, help='Interactive mode')
     parser.add_argument('-q', '--query-dict', type=str, required=False, default=None, help='Query dict JSON file path')
     parser.add_argument('--class-inference-log-file', type=str, required=False, default=os.devnull)
+    parser.add_argument('--class-attribute-csv-file', type=str, required=False, default=None, help='Export class-attribute matrix (document-term matrix) as a CSV file')
     parser.add_argument('--no-attribute-access-propagation', action='store_true', required=False)
     parser.add_argument('--no-stdlib-function-call-propagation', action='store_true', required=False)
     parser.add_argument('--no-user-defined-function-call-propagation', action='store_true', required=False)
@@ -118,11 +114,38 @@ def main():
 
     module_search_absolute_path: str = os.path.abspath(args.module_search_path)
     module_prefix: str = args.module_prefix
+
+    # Find modules
+
+    (
+        module_name_to_file_path_dict,
+        module_name_to_module_node_dict,
+        module_name_to_function_name_to_parameter_name_list_dict,
+        module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
+        module_name_to_import_tuple_set_dict,
+        module_name_to_import_from_tuple_set_dict
+    ) = static_import_analysis.do_static_import_analysis(module_search_absolute_path, module_prefix)
+
+    node_textual_representation_singleton.initialize(
+        module_name_to_module_node_dict
+    )
+
     output_file: str = args.output_file
+    
     is_interactive: bool = args.interactive
+    
+    # Read or generate query dict if not interactive
+
     if not is_interactive:
-        with open(args.query_dict, 'r') as fp:
-            query_dict = json.load(fp)
+        if args.query_dict is not None:
+            with open(args.query_dict, 'r') as fp:
+                query_dict = json.load(fp)
+        else:
+            query_dict: QueryDict = generate_query_dict(
+                module_name_to_file_path_dict,
+                module_name_to_function_name_to_parameter_name_list_dict,
+                module_name_to_class_name_to_method_name_to_parameter_name_list_dict
+            )
     else:
         query_dict = {}
 
@@ -155,20 +178,6 @@ def main():
     if args.simplified_type_ascription:
         switches_singleton.simplified_type_ascription = True
 
-    # Find modules
-    (
-        module_name_to_file_path_dict,
-        module_name_to_module_node_dict,
-        module_name_to_function_name_to_parameter_name_list_dict,
-        module_name_to_class_name_to_method_name_to_parameter_name_list_dict,
-        module_name_to_import_tuple_set_dict,
-        module_name_to_import_from_tuple_set_dict
-    ) = static_import_analysis.do_static_import_analysis(module_search_absolute_path, module_prefix)
-
-    node_textual_representation_singleton.initialize(
-        module_name_to_module_node_dict
-    )
-
     # Import modules
     sys.path.insert(0, module_search_absolute_path)
 
@@ -180,6 +189,7 @@ def main():
             logging.exception('Failed to import module %s', module_name)
 
     # Initialize class query database
+
     module_set: set[ModuleType] = set(module_name_to_module.values())
 
     for module_name, import_tuple_set in module_name_to_import_tuple_set_dict.items():
@@ -201,7 +211,11 @@ def main():
         typing_constraints_singleton.client
     )
 
+    if args.class_attribute_csv_file is not None:
+        class_query_database.class_attribute_matrix.to_csv(args.class_attribute_csv_file)
+
     # Collect and resolve typing constraints
+
     module_name_list = list(module_name_to_module.keys())
     module_list = list(module_name_to_module.values())
     module_node_list = [module_name_to_module_node_dict[module_name] for module_name in module_name_to_module]

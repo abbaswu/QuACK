@@ -135,7 +135,7 @@ class TypeInference:
                         instance_class = runtime_term.class_
                         if instance_class is type(None):
                             can_be_none = True
-                        else:
+                        elif instance_class is not type(NotImplemented):
                             not_none_instance_classes.add(instance_class)
 
             logging.info(
@@ -145,10 +145,17 @@ class TypeInference:
             )
 
             # Initialize aggregate attribute counter.
+
             aggregate_attribute_counter: Counter[str] = Counter()
             for node in nodes:
                 attribute_counter = typing_constraints_singleton.nodes_to_attribute_counters[node]
                 aggregate_attribute_counter.update(attribute_counter)
+
+            logging.info(
+                '%sAggregate attribute counter for %s: %s',
+                indent,
+                nodes, aggregate_attribute_counter
+            )
 
             # Query possible classes.
 

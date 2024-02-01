@@ -102,6 +102,7 @@ def get_dynamic_attributes_in_runtime_class(runtime_class: RuntimeClass) -> set[
     return dynamic_attributes_in_runtime_class
 
 
+@lru_cache(maxsize=None)
 def get_non_dynamic_attributes_in_runtime_class(runtime_class: RuntimeClass) -> set[str]:
     return set(dir(runtime_class)) - {
         # https://peps.python.org/pep-3119/
@@ -133,8 +134,34 @@ def get_non_dynamic_attributes_in_runtime_class(runtime_class: RuntimeClass) -> 
         # https://docs.python.org/3/reference/datamodel.html#object.__length_hint__
         # This method is purely an optimization and is never required for correctness.
         '__length_hint__',
-
-    }
+    } | {
+        '__ne__',
+        '__reduce__',
+        '__setattr__',
+        '__eq__',
+        '__doc__',
+        '__lt__',
+        '__class__',
+        '__gt__',
+        '__module__',
+        '__le__',
+        '__repr__',
+        '__dict__',
+        '__sizeof__',
+        '__init__',
+        '__str__',
+        '__dir__',
+        '__getattribute__',
+        '__format__',
+        '__delattr__',
+        '__init_subclass__',
+        '__ge__',
+        '__subclasshook__',
+        '__hash__',
+        '__reduce_ex__',
+        '__new__',
+        '__annotations__'
+    } # all attributes in the Typeshed definition of `object`
 
 
 @lru_cache(maxsize=None)
