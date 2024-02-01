@@ -247,7 +247,7 @@ def use_mypy_to_check_each_type_prediction(
                             type_annotation
                         ):
                             type_inference_class_module_name: str | None = type_inference_class.module_name
-                            if type_inference_class_module_name:
+                            if type_inference_class_module_name and type_inference_class_module_name != module_name: # No self-imports
                                 module_name_to_import_set.add(type_inference_class_module_name)
         
         if module_name_to_import_set:

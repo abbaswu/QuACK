@@ -8,6 +8,12 @@ def get_module_names_and_file_paths_for_pure_python_project(
         project_path: str
 ) -> Generator[tuple[str, str], None, None]:
     for root, directories, files in os.walk(project_path):
+        # Skip hidden directories
+        directories[:] = [d for d in directories if not d.startswith('.')]
+
+        # Skip hidden files
+        files[:] = [f for f in files if not f.startswith('.')]
+
         relpath = os.path.relpath(root, project_path)
 
         python_file_names = []
