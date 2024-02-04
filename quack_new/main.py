@@ -211,6 +211,9 @@ def main():
         typing_constraints_singleton.client
     )
 
+    import pudb
+    pudb.set_trace()
+
     if args.class_attribute_csv_file is not None:
         class_query_database.class_attribute_matrix.to_csv(args.class_attribute_csv_file)
 

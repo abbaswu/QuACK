@@ -13,6 +13,7 @@ from collections import Counter
 from math import log
 from types import ModuleType
 
+import numpy as np
 import pandas as pd
 from numpy import ndarray, zeros, fromiter
 from scipy.spatial.distance import cosine
@@ -33,21 +34,24 @@ class ClassQueryDatabase:
             module_set: typing.AbstractSet[ModuleType],
             typeshed_client: Client
     ):
-        self.candidate_class_list: list[TypeshedClass] = []
-        self.candidate_class_to_attribute_set_dict: dict[TypeshedClass, set[str]] = dict()
+        self.candidate_class_list: list[TypeshedClass]
+        self.candidate_class_to_attribute_set_dict: dict[TypeshedClass, set[str]]
+        self.candidate_class_to_index_dict: dict[TypeshedClass, int]
+        self.candidate_class_ndarray: np.ndarray
+        self.num_classes: int
 
-        self.candidate_class_to_index_dict: dict[TypeshedClass, int] = dict()
-        self.number_of_types: int = 0
+        self.attribute_list: list[str]
+        self.attribute_to_index_dict: dict[str, int]
+        self.num_attributes: int
 
-        self.attribute_frequency_counter: Counter[str] = Counter()
-        self.attribute_list: list[str] = []
-        self.attribute_to_index_dict: dict[str, int] = dict()
-        self.attribute_to_idf_dict: dict[str, float] = dict()
-        self.number_of_attributes: int = 0
-
+        # Document-term matrix
         self.class_attribute_matrix: pd.DataFrame
-
-        self.candidate_class_to_idf_ndarray_dict: dict[TypeshedClass, ndarray] = dict()
+        # Count non-zero values in each column (Document Frequency)
+        self.doc_frequency: pd.Series
+        # Calculate IDF for each attribute
+        self.idf: pd.Series
+        # Calculate the average number of attributes in all classes
+        self.average_num_attributes_in_classes: float
 
         # Perform live object lookup for classes
 
@@ -174,30 +178,34 @@ class ClassQueryDatabase:
         # Finish adding all classes
         # Initialize class query
 
+        self.candidate_class_list = []
+        self.candidate_class_to_attribute_set_dict = {}
+
         for typeshed_class, attribute_set in typeshed_class_to_attribute_set_dict.items():
             self.candidate_class_list.append(typeshed_class)
             self.candidate_class_to_attribute_set_dict[typeshed_class] = attribute_set
 
+        self.candidate_class_to_index_dict = {}
+
         for index, typeshed_class in enumerate(self.candidate_class_list):
             self.candidate_class_to_index_dict[typeshed_class] = index
+        
+        self.candidate_class_ndarray = np.array(self.candidate_class_list)
 
-        self.number_of_types += len(self.candidate_class_list)
+        self.num_classes = len(self.candidate_class_list)
 
-        for typeshed_class, attribute_set in self.candidate_class_to_attribute_set_dict.items():
-            for attribute in attribute_set:
-                self.attribute_frequency_counter[attribute] += 1
+        attribute_set = set.union(*self.candidate_class_to_attribute_set_dict.values())
 
-        self.attribute_list.extend(self.attribute_frequency_counter.keys())
+        self.attribute_list = list(attribute_set)
 
-        for index, attribute in enumerate(self.attribute_list):
-            self.attribute_to_index_dict[attribute] = index
+        self.attribute_to_index_dict = {
+            attribute: index
+            for index, attribute in enumerate(self.attribute_list)
+        }
 
-        for attribute, attribute_frequency in self.attribute_frequency_counter.items():
-            # https://towardsdatascience.com/how-sklearns-tf-idf-is-different-from-the-standard-tf-idf-275fa582e73d
-            self.attribute_to_idf_dict[attribute] = log((self.number_of_types) / (1 + attribute_frequency))
+        self.num_attributes = len(self.attribute_list)
 
-        self.number_of_attributes += len(self.attribute_list)
-
+        # Document-term matrix
         self.class_attribute_matrix = pd.DataFrame(
             [
                 [
@@ -210,63 +218,53 @@ class ClassQueryDatabase:
             columns=self.attribute_list
         )
 
-        for typeshed_class, attribute_set in self.candidate_class_to_attribute_set_dict.items():
-            idf_ndarray, _ = self.get_idf_ndarray(attribute_set)
-            self.candidate_class_to_idf_ndarray_dict[typeshed_class] = idf_ndarray
+        # Count non-zero values in each column (Document Frequency)
+        self.doc_frequency = self.class_attribute_matrix.apply(
+            lambda attribute_column: (attribute_column != 0).sum()
+        )
 
-    def get_idf_ndarray(self, attribute_set: set[str]) -> tuple[ndarray, int]:
-        idf_ndarray = zeros(self.number_of_attributes)
-        number_of_attributes: int = 0
-        for attribute in attribute_set:
-            try:
-                index = self.attribute_to_index_dict[attribute]
-                idf = self.attribute_to_idf_dict[attribute]
-                idf_ndarray[index] = idf
-                number_of_attributes += 1
-            except KeyError:
-                logging.warning('Skipped attribute: %s', attribute)
-        return idf_ndarray, number_of_attributes
+        # Calculate IDF for each attribute
+        self.idf = np.log((self.num_classes - self.doc_frequency + 0.5) / (self.doc_frequency + 0.5) + 1)
 
-    def get_tf_idf_ndarray(self, attribute_counter: Counter[str]) -> tuple[ndarray, int]:
-        tf_idf_ndarray = zeros(self.number_of_attributes)
-        number_of_attributes: int = 0
-        for attribute, count in attribute_counter.items():
-            tf = count
-            try:
-                index = self.attribute_to_index_dict[attribute]
-                idf = self.attribute_to_idf_dict[attribute]
-                tf_idf_ndarray[index] = tf * idf
-                number_of_attributes += 1
-            except KeyError:
-                logging.warning('Skipped attribute: %s', attribute)
-        return tf_idf_ndarray, number_of_attributes
+        # Calculate the average number of attributes in all classes
+        self.average_num_attributes_in_classes = (self.class_attribute_matrix != 0).sum(axis=1).mean()
+    
+    def get_score_function(self, attributes: typing.Iterable[str]):
+        k_1 = 1.5
+        b = 0.75
+
+        def score_function(class_row: pd.Series):
+            num_attributes_in_class = (class_row != 0).sum()
+            
+            def attribute_score(attribute: str):
+                attribute_idf = self.idf.get(attribute, 0)
+                attribute_frequency = class_row.get(attribute, 0)
+                return attribute_idf * (attribute_frequency * (k_1 + 1)) / (attribute_frequency + k_1 * (1 - b + b * (num_attributes_in_class) / self.average_num_attributes_in_classes))
+
+            return sum(
+                map(attribute_score, attributes),
+                0
+            )
+        
+        return score_function
 
     # Query TypeshedClass's given an attribute set.
     def query(self, attribute_counter: Counter[str]) -> tuple[ndarray, ndarray]:
-        query_tf_idf_ndarray, number_of_attributes = self.get_tf_idf_ndarray(attribute_counter)
+        if attribute_counter:
+            score_function = self.get_score_function(attribute_counter)
+            result_series = self.class_attribute_matrix.apply(score_function, axis=1)
 
-        if number_of_attributes > 0:
-            class_ndarray: ndarray = fromiter(
-                self.candidate_class_to_idf_ndarray_dict.keys(),
-                object,
-                len(self.candidate_class_to_idf_ndarray_dict.keys())
-            )
+            # Use numpy.argsort() on the Series values
+            indices = np.argsort(result_series.values)[::-1]
 
-            cosine_similarity_ndarray = zeros(len(class_ndarray))
+            class_ndarray = self.candidate_class_ndarray[indices]
+            similarity_ndarray = result_series.values[indices]
 
-            for i, (candidate_class, idf_ndarray) in enumerate(
-                    self.candidate_class_to_idf_ndarray_dict.items()
-            ):
-                cosine_distance: float = cosine(
-                    query_tf_idf_ndarray,
-                    idf_ndarray
-                )
+            if (max_similarity := similarity_ndarray[0]) > 0.:
+                return class_ndarray, similarity_ndarray
 
-                cosine_similarity = 1 - cosine_distance
+        # Either an empty attribute set, or no non-zero similarities calculated
+        class_ndarray = zeros(0, dtype=object)
+        similarity_ndarray = zeros(0)
 
-                cosine_similarity_ndarray[i] = cosine_similarity
-        else:
-            class_ndarray = zeros(0, dtype=object)
-            cosine_similarity_ndarray = zeros(0)
-
-        return class_ndarray, cosine_similarity_ndarray
+        return class_ndarray, similarity_ndarray

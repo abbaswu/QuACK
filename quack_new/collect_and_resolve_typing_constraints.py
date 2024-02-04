@@ -902,6 +902,11 @@ async def collect_and_resolve_typing_constraints(
                     node,
                     node.value
                 )
+
+                if isinstance(node.ctx, ast.Load):
+                    await set_node_to_be_instance_of(node.value, collections.abc.Sequence)
+                elif isinstance(node.ctx, ast.Store):
+                    await set_node_to_be_instance_of(node.value, collections.abc.MutableSequence)
             else:
                 # Set the current type variable as $ValueOf$ the type variable of `value`.
                 await add_relation(node.value, node, NonEquivalenceRelationType.ValueOf)
@@ -909,13 +914,10 @@ async def collect_and_resolve_typing_constraints(
                 # Set the type variable of `slice` as $KeyOf$ the type variable of `value`.
                 await add_relation(node.value, node.slice, NonEquivalenceRelationType.KeyOf)
 
-            if isinstance(node.ctx, ast.Load):
-                # Update the attribute counter of the type variable of `value` with the attribute `__getitem__`.
-                await update_attributes(node.value, {'__getitem__'})
-
-            if isinstance(node.ctx, ast.Store):
-                # Update the attribute counter of the type variable of `value` with the attribute `__setitem__`.
-                await update_attributes(node.value, {'__setitem__'})
+                if isinstance(node.ctx, ast.Load):
+                    await update_attributes(node.value, {'__getitem__'})
+                elif isinstance(node.ctx, ast.Store):
+                    await update_attributes(node.value, {'__setitem__'})
 
         # ast.Slice(lower, upper, step)
         if isinstance(node, ast.Slice):

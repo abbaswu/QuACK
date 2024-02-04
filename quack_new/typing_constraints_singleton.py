@@ -550,6 +550,66 @@ async def handle_function_call_propagation_task(
                                 get_attributes_in_runtime_class(runtime_class),
                                 1 / len(runtime_classes)
                             )
+                # Special handling for iter
+                elif runtime_term == iter:
+                    # iter(iterable) -> iterator
+                    # iter(callable, sentinel) -> iterator
+                    # 
+                    # Get an iterator from an object.  In the first form, the argument must
+                    # supply its own iterator, or be a sequence.
+                    # In the second form, the callable is called until it returns the sentinel.
+                    
+                    if len(apparent_argument_node_set_list) == 1:
+                        # Handle the first form.
+                        # Add `__iter__` to the bag of attributes of `iterable`.
+                        # Add `__iter__`, `__next__` to the bag of attributes of `iterator`.
+                        # Set `iterable`'s ITER_TARGET_OF to be equivalent to `iterator`'s.
+                        for iterable_node in apparent_argument_node_set_list[0]:
+                            await update_attributes(iterable_node, {'__iter__'})
+                        
+                        for iterator_node in returned_value_node_set:
+                            await update_attributes(iterator_node, {'__iter__', '__next__'})
+                        
+                        for iterable_node in apparent_argument_node_set_list[0]:
+                            for iterator_node in returned_value_node_set:
+                                await add_two_way_containment_relation(
+                                    await create_related_node(iterable_node, NonEquivalenceRelationType.IterTargetOf),
+                                    await create_related_node(iterator_node, NonEquivalenceRelationType.IterTargetOf)
+                                )
+
+                    elif len(apparent_argument_node_set_list) == 2:
+                        # Handle the second form.
+                        # Add `__call__` to the bag of attributes of `callable`.
+                        for callable_node in apparent_argument_node_set_list[0]:
+                            await update_attributes(callable_node, {'__call__'})
+                
+                # Special handling for next
+                elif runtime_term == next:
+                    # next(iterator[, default])
+                    # 
+                    # Return the next item from the iterator. If default is given and the iterator
+                    # is exhausted, it is returned instead of raising StopIteration.
+
+                    # Add `__iter__`, `__next__` to the bag of attributes of `iterator`.
+                    # Set `next(iterator[, default])` as the ITER_TARGET_OF `iterator`.
+                    # If `default` exists, set `default`'s bag of attributes as a subset of `next(iterator[, default])`'s.
+                    for iterator_node in apparent_argument_node_set_list[0]:
+                        await update_attributes(iterator_node, {'__iter__', '__next__'})
+
+                        for returned_value_node in returned_value_node_set:
+                            await add_relation(
+                                iterator_node,
+                                returned_value_node,
+                                NonEquivalenceRelationType.IterTargetOf
+                            )
+                    
+                    if len(apparent_argument_node_set_list) == 2:
+                        for default_node in apparent_argument_node_set_list[1]:
+                            for returned_value_node in returned_value_node_set:
+                                await add_containment_relation(
+                                    superset_node=returned_value_node,
+                                    subset_node=default_node
+                                )
 
                 # Special handling for delattr, getattr, hasattr, setattr
                 elif runtime_term in (delattr, getattr, hasattr, setattr):
@@ -558,6 +618,8 @@ async def handle_function_call_propagation_task(
                     # getattr(object, name, default)
                     # hasattr(object, name)
                     # setattr(object, name, value)
+
+                    # Update the bag of attributes of `object`.
                     # Only support name being literal strings.
                     attribute_names: set[str] = set()
                     for name_node in apparent_argument_node_set_list[1]:
