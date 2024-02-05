@@ -1020,9 +1020,9 @@ async def handle_matching_parameter_with_argument(
     # The argument node should be a subtype of the parameter node.
     # i.e., merge the attribute set of the parameter node into that of the argument node.
     for argument_node in argument_node_set:
-        await add_containment_relation(
-            superset_node=argument_node,
-            subset_node=parameter_node
+        await add_two_way_containment_relation(
+            argument_node,
+            parameter_node
         )
 
 
@@ -1034,9 +1034,9 @@ async def handle_matching_return_value_with_returned_value(
     # The returned value node should be a subtype of the return value node.
     # i.e., merge the attribute set of the returned value node into that of the return value node.
     for returned_value_node in returned_value_node_set:
-        await add_containment_relation(
-            superset_node=returned_value_node,
-            subset_node=return_value_node
+        await add_two_way_containment_relation(
+            returned_value_node,
+            return_value_node
         )
 
 

@@ -76,7 +76,8 @@ def run_mypy_and_parse_output(
                 '--no-warn-no-return',
                 '--no-strict-optional',
                 '--disable-error-code', 'override',
-                '--disable-error-code', 'assignment'
+                '--disable-error-code', 'assignment',
+                '--disable-error-code', 'has-type'
             ] + mypy_module_option_string,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE

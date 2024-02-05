@@ -21,6 +21,8 @@ from typeshed_client_ex.client import Client
 from typeshed_client_ex.type_definitions import TypeshedTypeAnnotation, TypeshedClass, from_runtime_class, \
     subscribe
 
+from node_textual_representation_singleton import node_to_textual_representation_dict
+
 
 def dump_confidence_and_possible_class_list(
         confidence_and_possible_class_list: list[tuple[float, TypeshedClass]],
@@ -154,7 +156,7 @@ class TypeInference:
             logging.info(
                 '%sAggregate attribute counter for %s: %s',
                 indent,
-                nodes, aggregate_attribute_counter
+                {node_to_textual_representation_dict.get(n, str(n)) for n in nodes}, aggregate_attribute_counter
             )
 
             # Query possible classes.

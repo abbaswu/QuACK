@@ -10,8 +10,8 @@ def breadth_first_search_layers(
     if starting_node_frozenset is None:
         starting_node_set = {
             node
-            for node, out_degree in G.out_degree
-            if not out_degree
+            for node, in_degree in G.in_degree
+            if not in_degree
         }
     else:
         starting_node_set = set(starting_node_frozenset)

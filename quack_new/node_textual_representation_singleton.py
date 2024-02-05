@@ -26,13 +26,18 @@ def get_textual_representation(
         lineno: typing.Optional[int] = None,
         textual_description: typing.Optional[str] = None
 ):
-    textual_representation_components: list[str] = [str(node)]
+    textual_representation_components: list[str] = []
 
     if module_name is not None:
+        textual_representation_components.append(module_name)
         if lineno is not None:
-            textual_representation_components.append(module_name + str(lineno))
+            textual_representation_components.append(':')
+            textual_representation_components.append(str(lineno))
 
     if textual_description is not None:
-        textual_representation_components.append(json.dumps(textual_description))
-
-    return ' '.join(textual_representation_components)
+        textual_representation_components.append(textual_description)
+    
+    if textual_representation_components:
+        return ' '.join(textual_representation_components)
+    else:
+        return str(node)
